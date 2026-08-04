@@ -1,0 +1,6 @@
+data/
+logs/
+.env
+gorm.md
+fiber.md
+snow_flake.md

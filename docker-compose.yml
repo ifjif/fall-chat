@@ -1,0 +1,55 @@
+services:
+  mysql8:
+    image: docker.m.daocloud.io/library/mysql:8.0.40
+    container_name: mysql8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: fallchat
+      MYSQL_USER: fc
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s #30s启动缓冲时间
+    ports:
+      - "13306:3306"
+    volumes:
+      - ./data:/var/lib/mysql
+      - ./conf:/etc/mysql/conf.d
+      - ./logs:/var/log/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  #go 后端服务
+  fall_chat_backend:
+    build: ./backend
+    container_name: fall_chat_backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: mysql8
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASS: ${MYSQL_ROOT_PASSWORD}
+      DB_NAME: fallchat
+    depends_on:
+      mysql8:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+  #vue3 前端服务
+  fall_chat_frontend:
+    build: ./frontend
+    container_name: fall_chat_frontend
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules

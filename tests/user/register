@@ -1,0 +1,9 @@
+-X POST
+
+url = http://127.0.0.1:8080/user/register
+
+-H "Content-Type=application/json"
+-H "Content-Type=application/json"
+
+-d @register.json
+-o register-res.json

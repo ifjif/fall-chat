@@ -1,0 +1,10 @@
+-X POST
+
+url = http://localhost:8080/api/data/26f76530-b33d-440b-8dbd-576501d44ba5/query
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+
+-d @query_condition.json
+
+-o query_response.json
