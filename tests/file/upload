@@ -1,0 +1,13 @@
+-X POST
+
+url = http://localhost:8080/api/v1/file/upload
+
+-H "Content-Type: multipart/form-data"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg3MzI3MzM2LCJuYmYiOjE3ODczMjU1MzYsImlhdCI6MTc4NzMyNTUzNn0.oaZ7S-hxTSEAJBjWC7axipU_nr_0iIfJhpfpuBolDxM"
+
+-F "file=@test-large5m.mp4"
+-F "file_id=testfileid"
+
+-o upload-res.json
+

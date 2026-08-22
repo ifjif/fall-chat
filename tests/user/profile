@@ -1,0 +1,9 @@
+-X GET
+
+url = http://localhost:8080/api/v1/user/profile?token="xx"
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg3MjExMDI4LCJuYmYiOjE3ODcyMDkyMjgsImlhdCI6MTc4NzIwOTIyOH0.2tF70dSbEKm5vpBtKH04sBM9PfIPP0c3RnTmDF__Qlc"
+
+-o profile-res.json

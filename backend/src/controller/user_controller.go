@@ -1,49 +1,232 @@
 package controller
 
 import (
-	"log"
-	"zzc/fall-chat/src/errs"
+	"fmt"
+	"time"
+	"zzc/fall-chat/src/bind"
+	"zzc/fall-chat/src/converter"
+	"zzc/fall-chat/src/ctxkey"
+	"zzc/fall-chat/src/dto/request"
+	"zzc/fall-chat/src/middleware"
+	"zzc/fall-chat/src/pkg/resp"
 	"zzc/fall-chat/src/service"
+	"zzc/fall-chat/src/utils"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 type UserController struct {
-	name        string
+	BaseController
 	userService *service.UserService
 }
 
 func NewUserController(name string) *UserController {
-	userService := service.GlobalService[service.USER_SERVICE_NAME].(*service.UserService)
+	bs := BaseController{name: name}
 	return &UserController{
-		userService: userService,
-		name:        name,
+		BaseController: bs,
 	}
 }
 
-func UserGroup(c *fiber.App, uc *UserController) {
-	group := c.Group("/user")
-	group.Post("/register", uc.register)
+func (uc *UserController) Inject() {
+	userService := service.GlobalService[service.USER_SERVICE_NAME].(*service.UserService)
+	uc.userService = userService
 }
 
-type RegisterUserReq struct {
-	Name     string `json:"name" validate:"required,min=3,max=50"`
-	Password string `json:"password" validate:"required,min=8,max=20"`
+func (uc *UserController) SetRoute(r fiber.Router) {
+	group := r.Group("/user")
+	group.Post("/register", uc.register)
+	group.Post("/login", uc.login)
+	group.Post("/forgetPassword", uc.forgetPassword)
+
+	authGroup := group.Group("")
+	authGroup.Use(middleware.AuthMiddleware)
+	authGroup.Post("/resetPassword", uc.resetPassword)
+	authGroup.Post("/updateProfile", uc.updateProfile)
+	authGroup.Post("/search", uc.search)
+	authGroup.Get("/profile", uc.profile)
 }
 
 // /user/register
 func (uc *UserController) register(c fiber.Ctx) error {
-	var registerUserReq RegisterUserReq
-	if err := c.Bind().Body(&registerUserReq); err != nil {
-		log.Printf("UserController[请求参数错误]：%v\n", err)
-		// return &fiber.Error{Code: fiber.StatusBadRequest, Message: "请求参数错误"}
-		return errs.NewBizError(4000, fiber.StatusBadRequest, "请求参数错误")
-	}
-	pid, err := uc.userService.RegisterUser(registerUserReq.Name, registerUserReq.Password)
+	req, err := bind.Body[request.RegisterUserRequest](c, func(err error) {
+		uc.LogWarn("register Body绑定失败", err)
+	})
 	if err != nil {
-		log.Printf("注册失败: %v\n", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("注册失败")
+		return err
 	}
 
-	return c.JSON(fiber.Map{"id": pid})
+	pid, err := uc.userService.RegisterUser(req.Username, req.Password)
+	if err != nil {
+		uc.LogWarn("register", err, "username", req.Username)
+		return err
+	}
+
+	return resp.
+		New(c).
+		OK().
+		Message("注册成功").
+		JSON(fiber.Map{"id": pid})
+}
+
+// /user/login
+func (uc *UserController) login(c fiber.Ctx) error {
+	req, err := bind.Body[request.LoginUserRequest](c, func(err error) {
+		uc.LogWarn("login Body绑定失败", err)
+	})
+	if err != nil {
+		return err
+	}
+
+	result, err := uc.userService.Login(req.Username, req.Password)
+	if err != nil {
+		uc.LogWarn("login", err, "username", req.Username)
+		return err
+	}
+
+	loginUserResp := converter.ToLoginUserResponse(result)
+	// 设置 refresh cookie
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    result.RefreshToken,
+		MaxAge:   int(result.RefreshExpiresIn),
+		HTTPOnly: true,
+		// Secure:   true, 仅https
+	})
+
+	return resp.New(c).
+		OK().
+		Message("登录成功").
+		JSON(loginUserResp)
+}
+
+// /user/resetPassword	需auth
+func (uc *UserController) resetPassword(c fiber.Ctx) error {
+	// 已前置处理, 不再判断
+	id := ctxkey.GetUserID(c)
+	username := ctxkey.GetUsername(c)
+
+	req, err := bind.Body[request.ResetPasswordRequest](c, func(err error) {
+		uc.LogWarn("resetPassword Body绑定失败", err)
+	})
+	if err != nil {
+		return err
+	}
+
+	req.ID = id
+	req.Username = username
+
+	cmd := converter.ToResetPasswordCommand(req)
+
+	err = uc.userService.ResetPassword(cmd)
+	if err != nil {
+		uc.LogWarn("resetPassword", err)
+		return err
+	}
+
+	return resp.
+		New(c).
+		OK().
+		Message("更新成功").
+		JSON(nil)
+}
+
+// /user/forgetPassword
+func (uc *UserController) forgetPassword(c fiber.Ctx) error {
+	req, err := bind.Body[request.ForgetPasswordRequest](c, func(err error) {
+		uc.LogWarn("forgetPassword Body绑定失败", err)
+	})
+	if err != nil {
+		return err
+	}
+
+	cmd := converter.ToForgetPasswordCommand(req)
+	err = uc.userService.ForgetPassword(cmd)
+	if err != nil {
+		uc.LogWarn("forgetPassword", err)
+		return err
+	}
+
+	return resp.
+		New(c).
+		OK().
+		Message("找回成功").
+		JSON(nil)
+}
+
+// /user/updateProfile 需auth
+func (uc *UserController) updateProfile(c fiber.Ctx) error {
+	id := ctxkey.GetUserID(c)
+	username := ctxkey.GetUsername(c)
+
+	req, err := bind.Body[request.UpdateProfileRequest](c, func(err error) {
+		uc.LogWarn("updateProfile Body绑定失败", err)
+	})
+	if err != nil {
+		return err
+	}
+
+	req.ID = id
+	req.Username = username
+
+	cmd := converter.ToUpdateProfileCommand(req)
+
+	if err := uc.userService.UpdateProfile(cmd); err != nil {
+		uc.LogWarn("updateProfile", err)
+
+		return err
+	}
+	return resp.
+		New(c).
+		OK().
+		Message("更新成功").
+		JSON(nil)
+}
+
+// /user/search 需auth
+func (uc *UserController) search(c fiber.Ctx) error {
+	userID := ctxkey.GetUserID(c)
+	username := ctxkey.GetUsername(c)
+	req, err := bind.Body[request.SearchRequest](c, func(err error) {
+		uc.LogWarn("search Body绑定失败", err,
+			"username", username,
+		)
+	})
+	if err != nil {
+		return err
+	}
+
+	req.Username = username
+	req.ID = userID
+
+	qu := converter.ToSearchQuery(req)
+
+	results, err := uc.userService.Search(qu)
+	if err != nil {
+		uc.LogWarn("search", err)
+		return err
+	}
+
+	return resp.
+		New(c).
+		OK().
+		JSON(results)
+}
+
+// /user/profile 需auth
+func (uc *UserController) profile(c fiber.Ctx) error {
+	id := ctxkey.GetUserID(c)
+
+	result, err := uc.userService.Profile(id)
+	if err != nil {
+		uc.LogWarn("profile", err)
+	}
+
+	response := converter.ToUserProfileResponse(result)
+	accessTokenExpires := utils.TOKEN_ACCESS_EXPIRE_DURATION / time.Second
+	// access_token 访问期限 30 mins
+	c.Set("Cache-Control", fmt.Sprintf("private, max-age=%d", accessTokenExpires))
+
+	return resp.
+		New(c).
+		OK().JSON(response)
 }

@@ -1,11 +1,23 @@
-<script setup></script>
-
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div class="fallchat">
+    <div class="body">
+      <router-view></router-view>
+    </div>
+  </div>
 </template>
 
-<style scoped></style>
+<script setup>
+</script>
+
+<style scoped>
+.fallchat {
+  box-sizing: border-box;
+  padding: 20px;
+  width: 100%;
+  height: 100%;
+}
+
+.body {
+  height: 100%;
+}
+</style>

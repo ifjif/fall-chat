@@ -12,6 +12,11 @@ func (be *BizError) Error() string {
 	return fmt.Sprintf("[%d] %s", be.Status, be.Message)
 }
 
-func NewBizError(code int, status int, message string) *BizError {
+// code = status
+func NewStatusError(status int, message string) *BizError {
+	return &BizError{Status: status, Code: status, Message: message}
+}
+
+func NewBizError(code, status int, message string) *BizError {
 	return &BizError{Status: status, Code: code, Message: message}
 }

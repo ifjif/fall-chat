@@ -1,0 +1,23 @@
+# 请求 需auth
+
+-X POST
+
+url = <http://localhost:8080/api/v1/file/instanceCheck>
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg3MzkyOTI1LCJuYmYiOjE3ODczOTExMjUsImlhdCI6MTc4NzM5MTEyNX0.WarAQktnl4W1CmIZZY--SoyuKxmU_Vpwy6yvHUKcUeU"
+
+json:
+
+      {
+        "file_id": "testchunksmerge"
+      }
+
+# 成功
+
+      {
+        "code": 200,
+        "message": "",
+        "data": "files/testchunksmerge/test-merge.zip"
+      }

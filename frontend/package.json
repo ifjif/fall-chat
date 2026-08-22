@@ -10,8 +10,10 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
-    "fall-ui": "^0.1.1",
+    "axios": "^1.19.0",
+    "fall-ui": "^0.2.4",
     "pinia": "^4.0.2",
+    "spark-md5": "^3.0.2",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0"
   },

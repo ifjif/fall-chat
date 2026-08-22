@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"log"
 	"time"
 	"zzc/fall-chat/src/model"
 
@@ -65,7 +64,7 @@ func getMachineIDFromeDB(db *gorm.DB) (int64, error) {
 		Take(&machineID)
 
 	if result.Error == nil {
-		log.Default().Printf("存在漏的machine id: %d, 进行复用\n", machineID.ID)
+		LogInfo("存在漏的machine id: %d, 进行复用", machineID.ID)
 		// status = 1, ip = ip
 		newMid := model.MachineIdPool{
 			ID:            machineID.ID,
@@ -79,7 +78,7 @@ func getMachineIDFromeDB(db *gorm.DB) (int64, error) {
 	}
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		log.Default().Println("不存在漏的machine id, 进行新增")
+		LogInfo("不存在漏的machine id, 进行新增")
 	} else {
 		return 0, result.Error
 	}
@@ -107,7 +106,7 @@ func startHeartBeat(db *gorm.DB, mid int64, stopHearBeat chan struct{}) {
 				Where("id = ?", mid).
 				Update("last_heartbeat", time.Now())
 			if result.Error != nil {
-				log.Default().Fatalf("更新机器心跳失败: %v\n", result.Error)
+				LogError("更新机器心跳失败: %v", result.Error)
 			}
 		case <-stopHearBeat:
 			return

@@ -1,0 +1,15 @@
+{
+  "code": 200,
+  "message": "",
+  "data": {
+    "id": "7aeabdf9ad0bdbca",
+    "avatar": "",
+    "username": "zhangsan",
+    "nickname": "user7aeabdf9ad0bdbca",
+    "email": "",
+    "phone": "",
+    "created_at": "2026-08-13T11:57:26.534Z",
+    "status": 1,
+    "search_flag": 1
+  }
+}

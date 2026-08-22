@@ -1,1 +1,7 @@
-{"code":4000,"message":"请求参数错误","status":400}
+{
+  "code": 200,
+  "message": "注册成功",
+  "data": {
+    "id": "7aeabd99310bdbca"
+  }
+}

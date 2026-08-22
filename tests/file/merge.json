@@ -1,0 +1,9 @@
+{
+  "file_id": "testchunksmerge",
+  "filename": "test-merge.zip",
+  "total_chunk": 2,
+  "chunks": [
+    0,
+    1
+  ]
+}

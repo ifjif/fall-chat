@@ -1,0 +1,9 @@
+-X POST
+
+url = http://localhost:8080/api/v1/email/passRestCode
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+
+-d @pass-reset-code.json
+-o pass-reset-code-res.json

@@ -1,0 +1,10 @@
+-X POST
+
+url = http://localhost:8080/api/v1/user/updateProfile
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FkZTE2MWM3OTBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiJ1bmtub3duIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg2MTk2ODQ0LCJuYmYiOjE3ODYxMTA0NDQsImlhdCI6MTc4NjExMDQ0NH0.1Pw8Sv6eb5skIfBBC0cJ5aXvvB8XYQLSdA4nrDvv59o"
+
+-d @update-profile.json
+-o update-profile-res.json

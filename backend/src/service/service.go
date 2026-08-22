@@ -1,5 +1,7 @@
 package service
 
 type Service interface {
-	service()
+	Service()
+	Name() string
+	Inject()
 }

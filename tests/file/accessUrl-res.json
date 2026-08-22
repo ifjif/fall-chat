@@ -1,0 +1,5 @@
+{
+  "code": 200,
+  "message": "",
+  "data": "/api/v1/file/fetch?file=files%2Ftestchunksmerge%2Ftest-merge.zip\u0026token=Bearer+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiZmlsZV9hY2Nlc3MiLCJpc3MiOiJmYWxsLWNoYXQiLCJleHAiOjE3ODczOTI3NTIsIm5iZiI6MTc4NzM5MjQ1MiwiaWF0IjoxNzg3MzkyNDUyfQ.v9IQHIHN1mlo7PLdEO-5YiwmdKVBxcgWCgvp6VGDA28"
+}

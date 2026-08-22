@@ -1,0 +1,8 @@
+-X GET
+
+url = http://localhost:8080/api/v1/file/config
+
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg2NzE4MzI3LCJuYmYiOjE3ODY3MTY1MjcsImlhdCI6MTc4NjcxNjUyN30.BRnd_cqmWl8AhZCMSK5BMSvD-Zfq7noT3XyvUvyxvRM"
+
+-o config-res.json
