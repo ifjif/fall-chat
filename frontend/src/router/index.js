@@ -33,6 +33,10 @@ const routes = [
       {
         path: '/setting',
         component: () => import('../views/setting-view.vue')
+      },
+      {
+        path: '/relation',
+        component: () => import('../views/relation-view.vue')
       }
     ]
   }

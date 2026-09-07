@@ -1,0 +1,28 @@
+{
+  "code": 200,
+  "message": "",
+  "data": [
+    {
+      "id": "7af0eb6ebb4bdbc8",
+      "name": "go语言交流群1",
+      "avatar": "files/660395aada80ce93a51bfc40bf48f841/5306c1d3gy1h9ymb3ax5sj20zk0koaex.jpg",
+      "type": "group",
+      "peer_id": "7bcbcbcbcbcbcbca",
+      "last_msg_id": 0,
+      "last_msg_preview": "",
+      "last_msg_sender_id": 0,
+      "last_msg_time": "0001-01-01T00:00:00Z"
+    },
+    {
+      "id": "7af0eb791c0bdbca",
+      "name": "我是李四",
+      "avatar": "files/80fea4a632bb159ef84be63a4ae25a2d/avatar55.webp",
+      "type": "peer",
+      "peer_id": "7aeabd8c21cbdbca",
+      "last_msg_id": 0,
+      "last_msg_preview": "",
+      "last_msg_sender_id": 0,
+      "last_msg_time": "0001-01-01T00:00:00Z"
+    }
+  ]
+}

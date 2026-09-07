@@ -1,0 +1,13 @@
+{
+  "code": 200,
+  "message": "",
+  "data": [
+    {
+      "id": "7aeabd8c21cbdbca",
+      "nickname": "我是李四",
+      "avatar": "files/80fea4a632bb159ef84be63a4ae25a2d/avatar55.webp",
+      "remark": "",
+      "source": "search"
+    }
+  ]
+}

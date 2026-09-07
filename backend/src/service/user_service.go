@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"zzc/fall-chat/src/command"
+	"zzc/fall-chat/src/converter"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
 	"zzc/fall-chat/src/model"
@@ -342,10 +343,12 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 	}
 
 	finalResult := &response.SearchResult{}
-	var results []response.SearchDataResult
+	var results []*response.SearchDataResult
 
 	// 找人
-	var userResults []response.SearchDataResult
+	// var userResults []response.SearchDataResult
+
+	var userRows []model.UserOrGroupRelationRow
 	if userCursor != "end" {
 		result := us.db.Raw(`
 		select u.public_id as id,
@@ -353,11 +356,9 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 					 u.nickname as nickname,
 					 u.avatar as avatar,
 					 '' as description,
-					 case 
-							when fs.status = 1 then 'already_friend'
-							when fsq.status = 0 then 'request_pending'
-							else 'can_add'
-						end as relation_status 
+					 fs.status as friend_status,
+					 fsq.status as request_status,
+					 'user' as relation_type
 		from users u
 		left join friendships fs
 				on u.id = fs.friend_id and fs.status = 1 and fs.user_id = ?
@@ -370,7 +371,7 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 		order by u.id asc
 		limit 10
 		`, id, id, id, keyword, keyword, last_user_id).
-			Scan(&userResults)
+			Scan(&userRows)
 
 		if result.Error != nil {
 			us.LogWarn("search", result.Error,
@@ -381,21 +382,24 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 
 			return nil, result.Error
 		}
+
 	}
-	for i := range userResults {
-		userResults[i].Type = "user"
+
+	for i := range userRows {
+		results = append(results, converter.ToSearchDataResult(&userRows[i]))
 	}
-	results = append(results, userResults...)
+	// results = append(results, userResults...)
 	nextUserID := "end"
-	if len(userResults) != 0 {
-		newID := userResults[len(userResults)-1].ID
+	if len(userRows) != 0 {
+		newID := userRows[len(userRows)-1].ID
 		if newID != userCursor {
 			nextUserID = newID
 		}
 	}
 
 	// 找群
-	var groupResults []response.SearchDataResult
+	// var groupResults []response.SearchDataResult
+	var groupRows []model.UserOrGroupRelationRow
 
 	if groupCursor != "end" {
 		result := us.db.Raw(`
@@ -404,23 +408,22 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 						g.avatar as avatar,
 						g.description as description,
 						g.join_mode as join_mode,
+						gr.status as request_status,
 						'' as nickname,
-						case 
-							when gm.user_id is not null then 'already_joined'
-							when g.join_mode = 2 then 'cannot_join'
-							when g.join_mode = 1 then 'need_approval'
-							else 'can_join'
-						end as relation_status
+						gm.user_id as group_user_id,
+						'group' as relation_type
 		from group_infos g
 			left join group_members gm on
 			g.id = gm.group_id and gm.user_id = ?
+			left join group_requests gr on
+			g.id = gr.to_group_id and gr.status = 0 and gr.from_user_id = ?
 		where g.search_flag = 1 
 			and g.group_name like ?
 			and g.id > ?
 		order by g.id asc
 		limit 10
-		`, id, keyword, last_group_id).
-			Scan(&groupResults)
+		`, id, id, keyword, last_group_id).
+			Scan(&groupRows)
 
 		if result.Error != nil {
 			us.LogWarn("search", result.Error,
@@ -431,14 +434,14 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 			return nil, result.Error
 		}
 	}
-	for i := range groupResults {
-		groupResults[i].Type = "group"
+
+	for i := range groupRows {
+		results = append(results, converter.ToSearchDataResult(&groupRows[i]))
 	}
 
-	results = append(results, groupResults...)
 	nextGroupID := "end"
-	if len(groupResults) != 0 {
-		newID := groupResults[len(groupResults)-1].ID
+	if len(groupRows) != 0 {
+		newID := groupRows[len(groupRows)-1].ID
 		if newID != groupCursor {
 			nextGroupID = newID
 		}

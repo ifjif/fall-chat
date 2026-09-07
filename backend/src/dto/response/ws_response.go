@@ -1,0 +1,22 @@
+package response
+
+type WSMessage struct {
+	Type      string `json:"type"` // 如chat chat_ack join leave system heartbeat
+	Timestamp int64  `json:"timestamp"`
+	Data      any    `json:"data"` // 业务数据
+}
+
+type ChatACK struct {
+	Conv        string `json:"conv"`
+	To          string `json:"to"`
+	ServerMsgID string `json:"server_msg_id"`
+	ClientMsgID string `json:"client_msg_id"`
+}
+
+type ChatReply struct {
+	Conv     string `json:"conv"`
+	To       string `json:"to"`
+	MsgID    string `json:"msg_id"`
+	SenderID string `json:"sender_id"`
+	Content  string `json:"content"`
+}

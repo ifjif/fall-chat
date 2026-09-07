@@ -1,0 +1,9 @@
+-X GET
+
+url = http://localhost:8080/api/v1/conversation/list
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg4MzQ2MDIyLCJuYmYiOjE3ODgzNDQyMjIsImlhdCI6MTc4ODM0NDIyMn0.to4t-xACW9MtNlDvYmeMGHk3L40tsEwDVwsDBz2-Hkk"
+
+-o list-res.json

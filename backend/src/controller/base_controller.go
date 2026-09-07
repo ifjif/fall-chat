@@ -21,3 +21,7 @@ func (bs *BaseController) Inject() {}
 func (bc *BaseController) LogWarn(op string, err error, fields ...any) {
 	utils.LogWarn("[%s] %s failed: %v | Context: %v", bc.name, op, err, fields)
 }
+
+func (bc *BaseController) LogInfo(op string, fields ...any) {
+	utils.LogInfo("[%s] %s | Context: %v", bc.name, op, fields)
+}

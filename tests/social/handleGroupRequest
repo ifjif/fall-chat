@@ -1,0 +1,10 @@
+-X POST
+
+url = http://localhost:8080/api/v1/social/handleGroupRequest
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkOGMyMWNiZGJjYSIsInVzZXJuYW1lIjoibGlzaGkiLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg3ODQwMDg2LCJuYmYiOjE3ODc4MzgyODYsImlhdCI6MTc4NzgzODI4Nn0.IeX1UR5S3yN1hiDhTFWDFdX8SgS6fivXJfgFt6Oz0nU"
+
+-d @handleGroupRequest.json
+-o handleGroupRequest-res.json

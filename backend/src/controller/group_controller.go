@@ -35,6 +35,7 @@ func (gi *GroupInfoController) SetRoute(r fiber.Router) {
 	authGroup.Use(middleware.AuthMiddleware)
 
 	authGroup.Post("/createGroup", gi.createGroup)
+	authGroup.Post("/groups", gi.groups)
 }
 
 func (gic *GroupInfoController) createGroup(c fiber.Ctx) error {
@@ -65,4 +66,31 @@ func (gic *GroupInfoController) createGroup(c fiber.Ctx) error {
 		OK().
 		Message("创建成功").
 		JSON(nil)
+}
+
+func (gic *GroupInfoController) groups(c fiber.Ctx) error {
+	id := ctxkey.GetUserID(c)
+	username := ctxkey.GetUsername(c)
+
+	req, err := bind.Body[request.GroupInfoGroupsRequest](c, func(err error) {
+		gic.LogWarn("groups body bind faild.", err, "username", username)
+	})
+	if err != nil {
+		return err
+	}
+
+	qu := converter.ToGroupInfoGroupsQuery(req)
+	qu.ID = id
+	qu.Username = username
+
+	result, err := gic.groupService.Groups(qu)
+	if err != nil {
+		gic.LogWarn("groups", err)
+		return err
+	}
+
+	return resp.
+		New(c).
+		OK().
+		JSON(result)
 }

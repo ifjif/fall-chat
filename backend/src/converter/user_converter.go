@@ -82,3 +82,16 @@ func ToUserProfileResponse(m *model.User) *response.UserProfileResponse {
 		CreatedAt:  m.CreatedAt,
 	}
 }
+
+func ToSearchDataResult(row *model.UserOrGroupRelationRow) *response.SearchDataResult {
+	return &response.SearchDataResult{
+		Type:           row.RelationType,
+		ID:             row.ID,
+		Name:           row.Name,
+		Avatar:         row.Avatar,
+		Nickname:       row.Nickname,
+		Description:    row.Description,
+		JoinMode:       row.JoinMode,
+		RelationStatus: row.GetRelationStatusText(),
+	}
+}

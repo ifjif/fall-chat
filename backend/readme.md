@@ -13,4 +13,6 @@
 - JWT:"github.com/golang-jwt/jwt/v5"
 - 邮件发送："gopkg.in/gomail.v2"
 - 终端颜色: "github.com/fatih/color"
-- 存储：github.com/minio/minio-go/v7
+- 存储："github.com/minio/minio-go/v7"
+- redis: "github.com/redis/go-redis/v9"
+- kafka: "github.com/segmentio/kafka-go"

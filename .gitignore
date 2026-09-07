@@ -1,4 +1,4 @@
-data/
+/data/
 store/
 rs_store/
 logs/
@@ -18,3 +18,4 @@ file_download.md
 file_preview.md
 file_upload.md
 tem-go/
+data_flow.md

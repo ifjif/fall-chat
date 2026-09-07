@@ -8,7 +8,7 @@
         gap:10px;font-size:24px;
         ">
           <li style="cursor:pointer;" @click="router.push('/home')">
-            <img :src="avatarUrl" style="width:40px;height:40px;border-radius: 50%;" />
+            <Avatar size="40" :uri="avatarUrl"></Avatar>
           </li>
           <li v-for="(item, index) in topActions" :key="index">
             <fl-icon style="cursor:pointer;" @click="item.click">
@@ -38,11 +38,12 @@
 import { FlSetting, FlComment, FlTeam, FlAddTeam, FlEarth } from 'fall-ui/icons'
 import router from '@/router'
 import LayoutView from './layout-view.vue'
+import Avatar from '@/components/avatar.vue'
 import { useUserStore } from '@/stores/user_info'
 import { computed } from 'vue'
 const userStore = useUserStore()
 
-const avatarUrl = computed(() => userStore.fullAvatarUrl)
+const avatarUrl = computed(() => userStore.getAvatar())
 
 const topActions = [
   {
@@ -54,7 +55,7 @@ const topActions = [
   {
     com: FlTeam,
     click: () => {
-      console.log('team')
+      router.push('/relation')
     }
   },
   {

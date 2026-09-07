@@ -8,3 +8,7 @@ type CreateGroupRequest struct {
 	SearchFlag  int    `json:"search_flag" validate:"oneof=0 1"`
 	JoinMode    int    `json:"join_mode" validate:"oneof=0 1 2"`
 }
+
+type GroupInfoGroupsRequest struct {
+	Filter []int `json:"filter"`
+}

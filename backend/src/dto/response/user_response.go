@@ -38,8 +38,8 @@ type SearchDataResult struct {
 }
 
 type SearchResult struct {
-	Result     []SearchDataResult `json:"result"`
-	NextCursor string             `json:"next_cursor"`
+	Result     []*SearchDataResult `json:"result"`
+	NextCursor string              `json:"next_cursor"`
 }
 
 type UserProfileResponse struct {

@@ -3,6 +3,9 @@ package converter
 import (
 	"zzc/fall-chat/src/command"
 	"zzc/fall-chat/src/dto/request"
+	"zzc/fall-chat/src/dto/response"
+	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/query"
 )
 
 func ToCreateGroupCommand(req *request.CreateGroupRequest) *command.CreateGroupCommand {
@@ -13,5 +16,20 @@ func ToCreateGroupCommand(req *request.CreateGroupRequest) *command.CreateGroupC
 		Avatar:      req.Avatar,
 		SearchFlag:  req.SearchFlag,
 		JoinMode:    req.JoinMode,
+	}
+}
+
+func ToGroupInfoGroupsQuery(req *request.GroupInfoGroupsRequest) *query.GroupInfoGroupsQuery {
+	return &query.GroupInfoGroupsQuery{
+		Filter: req.Filter,
+	}
+}
+
+func ToGroupInfoJoinedGroupsResult(m *model.GroupInfo) *response.GroupInfoJoinedGroupsResult {
+	return &response.GroupInfoJoinedGroupsResult{
+		ID:          m.PublicID,
+		Name:        m.GroupName,
+		Avatar:      m.Avatar,
+		Description: m.Description,
 	}
 }

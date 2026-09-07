@@ -7,7 +7,7 @@ import (
 )
 
 type Model struct {
-	ID        uint64 `gorm:"primaryKey"`
+	ID        uint64 `gorm:"primaryKey;autoIncrement:false"`
 	PublicID  string `gorm:"size:32;uniqueIndex"`
 	CreatedAt time.Time
 	UpdatedAt time.Time

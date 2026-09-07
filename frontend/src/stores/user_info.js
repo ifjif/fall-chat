@@ -1,15 +1,11 @@
 import { fileAccessUrlApi } from "@/api/file";
 import { userProfileApi } from "@/api/user";
 import { defineStore } from "pinia";
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
 export const useUserStore = defineStore("user", () => {
+  const users = ref([{ avatar: '', nickname: '' }])
   const userInfo = ref(null)
-  const fullAvatarUrl = ref('')
-
-  watch(() => userInfo.value?.avatar, async () => {
-    fullAvatarUrl.value = await fetchUserAvatarUrl()
-  })
 
   async function loginSuccess() {
     const data = await userProfileApi()
@@ -28,6 +24,14 @@ export const useUserStore = defineStore("user", () => {
     }
   }
 
+  function getId() {
+    return userInfo.value.id
+  }
+
+  function getAvatar() {
+    return userInfo.value?.avatar
+  }
+
   function updateInfo(data) {
     setInfo(data)
   }
@@ -38,7 +42,8 @@ export const useUserStore = defineStore("user", () => {
 
   return {
     userInfo,
-    fullAvatarUrl,
+    getId,
+    getAvatar,
     loginSuccess,
     updateInfo,
     fetchUserAvatarUrl

@@ -1,0 +1,9 @@
+-X POST
+
+url = http://localhost:8080/api/v1/social/friendshipList
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg3NTg1NDk3LCJuYmYiOjE3ODc1ODM2OTcsImlhdCI6MTc4NzU4MzY5N30.lGIwWRGXXclzyx-45i64eL02zsTReZjjh2yKX07w8aY"
+
+-o friendshipList-res.json

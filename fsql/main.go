@@ -61,7 +61,7 @@ func main() {
 	// 使用 show master status 来查看filename和pos
 	// SELECT @@global.gtid_mode; 判断主库是否支持 GTID复制模式
 	// err = auth.SendBinlogDumpGTID("mysql-bin.000089", uint64(7411), uint32(100))
-	auth.SendBinlogDump("mysql-bin.000108", uint32(2068), uint32(100))
+	auth.SendBinlogDump("mysql-bin.000132", uint32(919), uint32(100))
 	if err != nil {
 		log.Fatal("发送 Binlog Dump 失败:", err)
 	}

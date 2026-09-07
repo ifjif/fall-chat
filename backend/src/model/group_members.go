@@ -28,7 +28,20 @@ type GroupMember struct {
 	UserID     int64                 `gorm:"uniqueIndex:idx_group_user_id;index"`
 	DeletedAt  soft_delete.DeletedAt `gorm:"uniqueIndex:idx_group_user_id`
 	Nickname   string                `gorm:"size:100"`
-	JoinSource string                `gorm:"size:50"`   // 加入来源 (search/group_qrcode)
+	JoinSource string                `gorm:"size:50"`   // 加入来源 (created/search/group_qrcode)
 	Muted      int8                  `gorm:"default:0"` // 个人禁言: 0:否 1:是
 	Role       int8                  `gorm:"default:0"` // 角色: 0:普通 1:管理员 2:群主
+}
+
+func GenerateCreatorGroupMember(gID, uID int64) *GroupMember {
+	return &GroupMember{
+		GroupID:    gID,
+		UserID:     uID,
+		JoinSource: "created",
+		Role:       1,
+	}
+}
+
+func (gm *GroupMember) IsOrdinaryRole() bool {
+	return gm.Role == 0
 }
