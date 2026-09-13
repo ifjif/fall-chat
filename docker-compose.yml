@@ -40,7 +40,7 @@ services:
     volumes:
       - ./data/db:/var/lib/mysql
       - ./conf:/etc/mysql/conf.d
-      - ./logs:/var/log/mysql
+      - ./logs/db:/var/log/mysql
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -112,6 +112,7 @@ services:
         condition: service_started
     volumes:
       - ./backend:/app
+      - ./logs/backend:/app/logs
 
   #fsql:
   #  build: ./fsql

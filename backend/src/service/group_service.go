@@ -34,10 +34,9 @@ func (gs *GroupService) CreateGroup(cmd *command.CreateGroupCommand) error {
 	groupInfo := model.GroupInfo{}
 	err := utils.InjectID4Model(gs.sf, &groupInfo.Model)
 	if err != nil {
-		gs.LogWarn("CreateGroup", err,
+		return gs.LogWarn("CreateGroup", err,
 			"username", cmd.Username,
 			"reason", "生成群ID失败")
-		return err
 	}
 
 	searchFlag := int8(cmd.SearchFlag)
@@ -54,27 +53,24 @@ func (gs *GroupService) CreateGroup(cmd *command.CreateGroupCommand) error {
 	groupMember := model.GenerateCreatorGroupMember(int64(groupInfo.ID), cmd.CreatorID)
 	err = utils.InjectID4Model(gs.sf, &groupMember.Model)
 	if err != nil {
-		gs.LogWarn("CreateGroup", err, "username", cmd.Username,
+		return gs.LogWarn("CreateGroup", err, "username", cmd.Username,
 			"reason", "生成群成员ID失败")
-		return err
 	}
 
 	// 群会话
 	groupConv := model.GenerateGroupConv(groupInfo.PublicID)
 	err = utils.InjectID4Model(gs.sf, &groupConv.Model)
 	if err != nil {
-		gs.LogWarn("CreateGroup", err, "username", cmd.Username,
+		return gs.LogWarn("CreateGroup", err, "username", cmd.Username,
 			"reason", "生成群会话ID失败")
-		return err
 	}
 
 	// 群会话成员
 	groupConvMember := model.GenerateConvMember(int64(groupConv.ID), cmd.CreatorID, int64(groupInfo.ID), groupInfo.Avatar, groupInfo.GroupName)
 	err = utils.InjectID4Model(gs.sf, &groupConvMember.Model)
 	if err != nil {
-		gs.LogWarn("CreateGroup", err, "username", cmd.Username,
+		return gs.LogWarn("CreateGroup", err, "username", cmd.Username,
 			"reason", "生成群会话成员ID失败")
-		return err
 	}
 
 	reason := ""
@@ -106,10 +102,8 @@ func (gs *GroupService) CreateGroup(cmd *command.CreateGroupCommand) error {
 		return nil
 	})
 	if err != nil {
-		gs.LogWarn("CreateGroup", err,
+		return gs.LogWarn("CreateGroup", err,
 			"username", cmd.Username, "reason", reason)
-
-		return err
 	}
 	return nil
 }
@@ -117,8 +111,7 @@ func (gs *GroupService) CreateGroup(cmd *command.CreateGroupCommand) error {
 func (gs *GroupService) Groups(qu *query.GroupInfoGroupsQuery) ([]*response.GroupInfoJoinedGroupsResult, error) {
 	rows, err := gs.dao.FindJoinedGroups(qu.ID, qu.Filter)
 	if err != nil {
-		gs.LogWarn("Groups", err, "找我加入的群失败")
-		return nil, err
+		return nil, gs.LogWarn("Groups", err, "找我加入的群失败")
 	}
 
 	var result []*response.GroupInfoJoinedGroupsResult

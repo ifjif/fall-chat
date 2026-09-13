@@ -7,16 +7,18 @@ type WSMessage struct {
 }
 
 type ChatACK struct {
-	Conv        string `json:"conv"`
+	ConvID      string `json:"conv_id"`
 	To          string `json:"to"`
 	ServerMsgID string `json:"server_msg_id"`
 	ClientMsgID string `json:"client_msg_id"`
+	MsgSeq      int64  `json:"msg_seq"`
 }
 
 type ChatReply struct {
-	Conv     string `json:"conv"`
+	ConvID   string `json:"conv_id"`
 	To       string `json:"to"`
 	MsgID    string `json:"msg_id"`
 	SenderID string `json:"sender_id"`
 	Content  string `json:"content"`
+	MsgSeq   int64  `json:"msg_seq"`
 }

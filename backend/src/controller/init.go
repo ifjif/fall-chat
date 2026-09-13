@@ -59,6 +59,7 @@ func doRegister() {
 	register(NewSocialController("SocialController"))
 	register(NewWSController("WSController"))
 	register(NewConversationController("ConversationController"))
+	register(NewConversationMemberController("ConversationMemberController"))
 }
 
 func doSetRoute(r fiber.Router) {

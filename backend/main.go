@@ -7,12 +7,16 @@ import (
 	"syscall"
 	"zzc/fall-chat/src/controller"
 	"zzc/fall-chat/src/database"
+	"zzc/fall-chat/src/middleware"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/server"
 	"zzc/fall-chat/src/service"
 	"zzc/fall-chat/src/utils"
 
 	_ "zzc/fall-chat/src/filestore"
+
+	_ "zzc/fall-chat/src/message_queue"
+	_ "zzc/fall-chat/src/task_manager"
 
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
@@ -24,7 +28,10 @@ func main() {
 	controller.Init(server.APP, controller.WithBeforeInjectHook(func() {
 		service.Init()
 	}), controller.WithBeforeSetRoute(func() fiber.Router {
-		return server.APP.Group("/api/v1")
+		app := server.APP.Group("/api/v1")
+		app.Use(middleware.TraceIDMiddleware)
+		app.Use(middleware.LoggerMiddleware)
+		return app
 	}))
 	listenQuit(database.DB)
 

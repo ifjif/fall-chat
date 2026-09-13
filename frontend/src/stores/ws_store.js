@@ -31,23 +31,35 @@ export const useWsStore = defineStore('ws', () => {
     status = 'connected'
   }
 
-  function handleChatReply(msg) {
-    console.log(msg)
-  }
 
   function handleChatAck(msg) {
     const ackData = msg.data
     const { server_msg_id, client_msg_id } = ackData
     // 更新会话列表最后一条消息
     const data = {
-      conv: ackData.conv,
+      conv_id: ackData.conv_id,
       to: ackData.to,
       last_msg_id: server_msg_id,
       last_msg_send_time: msg.timestamp || Date.now(),
+      last_msg_seq: ackData.msg_seq,
       client_msg_id
     }
 
-    useConversationStore().updateConvLastMsg(data)
+    useConversationStore().updateConvLastMsg4ACK(data)
+  }
+
+  function handleChatReply(msg) {
+    const replyData = msg.data
+    const data = {
+      conv_id: replyData.conv_id,
+      to: replyData.to,
+      sender_id: replyData.sender_id,
+      content: replyData.content,
+      last_msg_id: replyData.msg_id,
+      last_msg_send_time: msg.timestamp || Date.now(),
+      last_msg_seq: replyData.msg_seq
+    }
+    useConversationStore().handleReplyMsg(data)
   }
 
   function sendMessage(msg) {

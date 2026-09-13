@@ -16,3 +16,4 @@
 - 存储："github.com/minio/minio-go/v7"
 - redis: "github.com/redis/go-redis/v9"
 - kafka: "github.com/segmentio/kafka-go"
+- 日志轮转："github.com/lestrrat-go/file-rotatelogs"

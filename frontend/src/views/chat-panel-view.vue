@@ -6,14 +6,10 @@
       </div>
     </fl-header>
     <fl-main>
-      <fl-scrollbar @resize="handleResize">
+      <fl-scrollbar ref="scrollbarRef" @resize="handleResize">
         <div :style="{ width: `${messagePanelWidth}px` }">
-          <!--
-          <MessageComponent :self="false"></MessageComponent>
-          <MessageComponent v-for="i in [1, 2, 3, 4, 5, 6, 7]"></MessageComponent>
-          <MessageComponent :self="false"></MessageComponent>
-          -->
-          <MessageComponent :data="msg" v-for="msg in conv.messages"></MessageComponent>
+          <MessageComponent :self="msg.sender_id === userInfoStore.getId()" :data="msg" v-for="msg in conv.messages">
+          </MessageComponent>
         </div>
       </fl-scrollbar>
     </fl-main>
@@ -28,23 +24,29 @@
 </template>
 <script setup>
 import MessageComponent from '@/components/message-component.vue'
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useWsStore } from '@/stores/ws_store'
 import { useUserStore } from '@/stores/user_info'
 import { useConversationStore } from '@/stores/conversation_store'
 
+const scrollbarRef = ref(null)
 const wsStore = useWsStore()
 const userInfoStore = useUserStore()
 const convStore = useConversationStore()
 
 // 当前会话
 const conv = computed(() => convStore.getActiveConv())
+let messageContainerHeight = 0
 
 const inputData = ref('')
 
 const messagePanelWidth = ref(0)
-const handleResize = ({ clientWidth }) => {
+const handleResize = ({ clientWidth, clientHeight, scrollWidth, scrollHeight }) => {
   messagePanelWidth.value = clientWidth
+  if (messageContainerHeight < scrollHeight) {
+    scrollbarRef.value.scrollToBottom()
+  }
+  messageContainerHeight = scrollHeight
 }
 
 const handleSend = () => {
@@ -60,7 +62,6 @@ const handleSend = () => {
     content,
     Type: convStore.getActiveConvType()
   }
-  console.log(data)
   wsStore.sendMessage({ type: 'chat', timestamp: Date.now(), data })
   inputData.value = ''
 }

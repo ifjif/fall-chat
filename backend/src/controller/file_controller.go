@@ -57,8 +57,7 @@ func (fc *FileController) SetRoute(r fiber.Router) {
 func (fc *FileController) config(c fiber.Ctx) error {
 	result, err := fc.fileService.Config()
 	if err != nil {
-		fc.LogWarn("config", err)
-		return err
+		return fc.LogWarn("config", err)
 	}
 
 	fcRespone := converter.ToFileConfigResponse(result)
@@ -74,13 +73,11 @@ func (fc *FileController) fetch(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Query[request.FileFetchRequest](c, func(err error) {
-		fc.LogWarn("fetch body bind error.", err,
+	req, err := bind.Query[request.FileFetchRequest](c)
+	if err != nil {
+		return fc.LogWarn("fetch body bind error.", err,
 			"username", username,
 		)
-	})
-	if err != nil {
-		return err
 	}
 
 	qu := converter.ToFileFetchQuery(req)
@@ -89,8 +86,7 @@ func (fc *FileController) fetch(c fiber.Ctx) error {
 
 	result, err := fc.fileService.Fetch(qu)
 	if err != nil {
-		fc.LogWarn("fetch", err)
-		return err
+		return fc.LogWarn("fetch", err)
 	}
 
 	size := result.Stat.Size
@@ -110,17 +106,14 @@ func (fc *FileController) fetch(c fiber.Ctx) error {
 func (fc *FileController) upload(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
-	req, err := bind.Body[request.FileUploadRequest](c, func(err error) {
-		fc.LogWarn("upload body bind error.", err, "username", username)
-	})
+	req, err := bind.Body[request.FileUploadRequest](c)
 	if err != nil {
-		return err
+		return fc.LogWarn("upload body bind error.", err, "username", username)
 	}
 
 	filesize := req.File.Size
 	if filesize > filestore.ChunkSize {
-		fc.LogWarn("upload", errs.FileErrTooLarge, "username", username)
-		return errs.FileErrTooLarge
+		return fc.LogWarn("upload", errs.FileErrTooLarge, "username", username)
 	}
 
 	cmd := converter.ToFileUploadCommand(req)
@@ -129,8 +122,7 @@ func (fc *FileController) upload(c fiber.Ctx) error {
 
 	path, err := fc.fileService.Upload(cmd)
 	if err != nil {
-		fc.LogWarn("upload", err)
-		return err
+		return fc.LogWarn("upload", err)
 	}
 	return resp.
 		New(c).
@@ -143,11 +135,9 @@ func (fc *FileController) upload(c fiber.Ctx) error {
 func (fc *FileController) chunk(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
-	req, err := bind.Form[request.FileUploadChunkRequest](c, func(err error) {
-		fc.LogWarn("uploadChunk form绑定失败", err)
-	})
+	req, err := bind.Form[request.FileUploadChunkRequest](c)
 	if err != nil {
-		return err
+		return fc.LogWarn("uploadChunk form绑定失败", err)
 	}
 
 	cmd := converter.ToFileUploadChunkCommand(req)
@@ -156,8 +146,7 @@ func (fc *FileController) chunk(c fiber.Ctx) error {
 
 	err = fc.fileService.UploadChunk(cmd)
 	if err != nil {
-		fc.LogWarn("uploadChunk", err)
-		return err
+		return fc.LogWarn("uploadChunk", err)
 	}
 
 	return resp.
@@ -170,11 +159,9 @@ func (fc *FileController) chunkStatus(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	usernmae := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.FileChunkStatusRequest](c, func(err error) {
-		fc.LogWarn("chunkStatus body bind error.", err, "username", usernmae)
-	})
+	req, err := bind.Body[request.FileChunkStatusRequest](c)
 	if err != nil {
-		return err
+		return fc.LogWarn("chunkStatus body bind error.", err, "username", usernmae)
 	}
 
 	qu := converter.ToFileChunkStatusQuery(req)
@@ -183,8 +170,7 @@ func (fc *FileController) chunkStatus(c fiber.Ctx) error {
 
 	result, err := fc.fileService.ChunkStatus(qu)
 	if err != nil {
-		fc.LogWarn("chunkStatus", err)
-		return err
+		return fc.LogWarn("chunkStatus", err)
 	}
 
 	return resp.
@@ -198,13 +184,11 @@ func (fc *FileController) merge(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.FileUploadMergeRequest](c, func(err error) {
-		fc.LogWarn("uploadMerge body绑定失败", err,
+	req, err := bind.Body[request.FileUploadMergeRequest](c)
+	if err != nil {
+		return fc.LogWarn("uploadMerge body绑定失败", err,
 			"username", username,
 		)
-	})
-	if err != nil {
-		return err
 	}
 
 	cmd := converter.ToFileUploadMergeCommand(req)
@@ -213,8 +197,7 @@ func (fc *FileController) merge(c fiber.Ctx) error {
 
 	filename, err := fc.fileService.UploadMerge(cmd)
 	if err != nil {
-		fc.LogWarn("uploadMerge", err)
-		return err
+		return fc.LogWarn("uploadMerge", err)
 	}
 
 	return resp.
@@ -228,13 +211,11 @@ func (fc *FileController) merge(c fiber.Ctx) error {
 func (fc *FileController) instanceCheck(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
-	req, err := bind.Body[request.FileInstanceCheckRequest](c, func(err error) {
-		fc.LogWarn("instanceCheck Body bind error.", err,
+	req, err := bind.Body[request.FileInstanceCheckRequest](c)
+	if err != nil {
+		return fc.LogWarn("instanceCheck Body bind error.", err,
 			"username", username,
 		)
-	})
-	if err != nil {
-		return err
 	}
 
 	qu := converter.ToFileInstanceCheckQuery(req)
@@ -243,8 +224,7 @@ func (fc *FileController) instanceCheck(c fiber.Ctx) error {
 
 	fileURL, err := fc.fileService.InstanceCheck(qu)
 	if err != nil {
-		fc.LogWarn("instanceCheck", err)
-		return err
+		return fc.LogWarn("instanceCheck", err)
 	}
 
 	if fileURL == "" {
@@ -265,14 +245,12 @@ func (fc *FileController) accessURL(c fiber.Ctx) error {
 	username := ctxkey.GetUsername(c)
 	filename := c.Query("file")
 	if filename == "" {
-		fc.LogWarn("accessUrl", bind.ErrBind, "username", username)
-		return bind.ErrBind
+		return fc.LogWarn("accessUrl", bind.ErrBind, "username", username)
 	}
 	// 生成临时token
 	token, _, err := utils.GenerateFileAccessToken(id, username, filename)
 	if err != nil {
-		fc.LogWarn("accessUrl", errs.CommonErrJWTTokenGeneration, "username", username)
-		return errs.CommonErrJWTTokenExpired
+		return fc.LogWarn("accessUrl", errs.CommonErrJWTTokenGeneration.Meger(err), "username", username)
 	}
 
 	url := fmt.Sprintf("/api/v1/file/fetch?file=%s&token=%s", url.QueryEscape(filename), url.QueryEscape("Bearer "+token))

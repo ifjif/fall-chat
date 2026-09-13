@@ -43,7 +43,7 @@ func (fs *FileService) Inject() {
 func (fs *FileService) add(maxSize int64, chunkSize int64) (*model.FileConfig, error) {
 	id, err := fs.sf.NextID()
 	if err != nil {
-		fs.LogWarn("add", err, "reason", "添加文件配置信息失败")
+		return nil, fs.LogWarn("add", err, "reason", "添加文件配置信息ID失败")
 	}
 	publicID := fs.sf.Encode(id)
 
@@ -56,8 +56,7 @@ func (fs *FileService) add(maxSize int64, chunkSize int64) (*model.FileConfig, e
 
 	result := fs.db.Create(fc)
 	if result.Error != nil {
-		fs.LogWarn("add", err, "reason", "创建一条记录失败")
-		return nil, result.Error
+		return nil, fs.LogWarn("add", result.Error, "reason", "创建一条记录失败")
 	}
 
 	return fc, nil
@@ -71,13 +70,12 @@ func (fs *FileService) Config() (*model.FileConfig, error) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			fc, err := fs.add(DEFAULT_MAX_SIZE, DEFAULT_CHUNK_SIZE)
 			if err != nil {
-				return nil, err
+				return nil, fs.LogWarn("Config", err, "reason", "增加文件配置信息失败")
 			}
 			return fc, nil
 		}
 
-		fs.LogWarn("Config", result.Error, "reason", "获取文件配置信息失败")
-		return nil, result.Error
+		return nil, fs.LogWarn("Config", result.Error, "reason", "获取文件配置信息失败")
 	}
 
 	return &fc, nil
@@ -86,21 +84,17 @@ func (fs *FileService) Config() (*model.FileConfig, error) {
 func (fs *FileService) Fetch(qu *query.FileFetchQuery) (*response.FileFetchResult, error) {
 	object, err := fs.store.GetObject(qu.File, filestore.StoreOptions{})
 	if err != nil {
-		fs.LogError("Fetch", err,
+		return nil, fs.LogError("Fetch", err,
 			"username", qu.Username,
 			"reason", "minio 获取文件失败",
 		)
-
-		return nil, err
 	}
 
 	stat, err := object.Stat()
 	if err != nil {
-		fs.LogError("Fetch", err, "username", qu.Username,
+		return nil, fs.LogError("Fetch", err, "username", qu.Username,
 			"reason", "获取文件stat失败",
 		)
-
-		return nil, err
 	}
 
 	result := &response.FileFetchResult{
@@ -117,7 +111,7 @@ func (fs *FileService) Upload(cmd *command.FileUploadCommand) (string, error) {
 
 	file, err := targetFile.Open()
 	if err != nil {
-		fs.LogWarn("Upload", err,
+		return "", fs.LogWarn("Upload", err,
 			"username", cmd.Username,
 			"reason", "文件打开失败",
 		)
@@ -130,11 +124,10 @@ func (fs *FileService) Upload(cmd *command.FileUploadCommand) (string, error) {
 		},
 	})
 	if err != nil {
-		fs.LogError("Upload", err,
+		return "", fs.LogError("Upload", err,
 			"username", cmd.Username,
 			"reason", "minio 上传文件失败",
 		)
-		return "", err
 	}
 
 	return filename, nil
@@ -145,12 +138,10 @@ func (fs *FileService) UploadChunk(cmd *command.FileUploadChunkCommand) error {
 
 	file, err := cmd.Chunk.Open()
 	if err != nil {
-		fs.LogWarn("UploadChunk", err,
+		return fs.LogWarn("UploadChunk", err,
 			"username", cmd.Username,
 			"reason", "打开文件失败",
 		)
-
-		return err
 	}
 	defer file.Close()
 
@@ -160,16 +151,14 @@ func (fs *FileService) UploadChunk(cmd *command.FileUploadChunkCommand) error {
 		},
 	})
 	if err != nil {
-		fs.LogError("UploadChunk", err, "reason", "上传到minio 错误")
-		return err
+		return fs.LogError("UploadChunk", err, "reason", "上传到minio 错误")
 	}
 	return nil
 }
 
 func (fs *FileService) UploadMerge(cmd *command.FileUploadMergeCommand) (string, error) {
 	if cmd.TotalChunk != len(cmd.Chunks) {
-		fs.LogWarn("UploadMerge", errs.FileErrChunkCountInvalid, "username", cmd.Username)
-		return "", errs.FileErrChunkCountInvalid
+		return "", fs.LogWarn("UploadMerge", errs.FileErrChunkCountInvalid, "username", cmd.Username)
 	}
 
 	var srcs []minio.CopySrcOptions
@@ -191,11 +180,10 @@ func (fs *FileService) UploadMerge(cmd *command.FileUploadMergeCommand) (string,
 
 	_, err := fs.store.ComposeObject(dist, srcs, filestore.StoreOptions{})
 	if err != nil {
-		fs.LogError("UploadMerge", err,
+		return "", fs.LogError("UploadMerge", err,
 			"username", cmd.Username,
 			"reason", "minio compose object 失败",
 		)
-		return "", err
 	}
 	return filename, nil
 }
@@ -218,11 +206,9 @@ func (fs *FileService) ChunkStatus(qu *query.FileChunkStatusQuery) ([]string, er
 
 	for info := range objectCh {
 		if info.Err != nil {
-			fs.LogError("ChunksFolder", info.Err,
+			return nil, fs.LogError("ChunksFolder", info.Err,
 				"username", qu.Username,
 				"reason", "minio获取已上传chunk失败")
-
-			return nil, info.Err
 		}
 		key := info.Key
 		names := strings.Split(key, "/")
@@ -252,12 +238,10 @@ func (fs *FileService) InstanceCheck(qu *query.FileInstanceCheckQuery) (string, 
 			return "", nil
 		}
 		if obj.Err != nil {
-			fs.LogError("InstanceCheck", obj.Err,
+			return "", fs.LogError("InstanceCheck", obj.Err,
 				"usernae", qu.Username,
 				"reason", "从minio list object失败",
 			)
-
-			return "", obj.Err
 		}
 
 		return obj.Key, nil

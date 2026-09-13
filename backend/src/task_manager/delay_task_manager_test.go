@@ -56,6 +56,10 @@ func (tj *TestJob) OnComplete() {
 	}
 }
 
+func (tj *TestJob) ShouldReplace(job Job) bool {
+	return true
+}
+
 func Test1(t *testing.T) {
 	var wg sync.WaitGroup
 	callback := func() {
@@ -104,7 +108,7 @@ func (rj *RetryJob) MaxRetries() int {
 func (rj *RetryJob) Execute() error {
 	fmt.Println("执行任务，模拟报错")
 
-	if rj.RetryCount() <= rj.MaxRetries() {
+	if rj.RetryCount() < rj.MaxRetries() {
 		rj.retryCount++
 		return fmt.Errorf("这是模拟报错：准备第 %d 重试", rj.RetryCount())
 	}
@@ -119,6 +123,10 @@ func (rj *RetryJob) OnComplete() {
 	if rj.CompleteCallback != nil {
 		rj.CompleteCallback()
 	}
+}
+
+func (rj *RetryJob) ShouldReplace(job Job) bool {
+	return true
 }
 
 func TestRetry(t *testing.T) {
@@ -155,6 +163,92 @@ func TestRetry(t *testing.T) {
 		[2026/09/07 19:23:00] [WARN]  Job key failed (attempt 3/3). Retrying in 8s. Error: 这是模拟报错：准备第 3 重试
 		执行任务，模拟报错
 		[2026/09/07 19:23:08] [WARN]  Job key failed after 3 retries. Last error: 这是模拟报错：准备第 4 重试. Dropping job
+
+
+	*/
+}
+
+type ReplaceJob struct {
+	seq int
+	CCB func()
+}
+
+func NewReplaceJob(seq int) *ReplaceJob {
+	return &ReplaceJob{
+		seq: seq,
+	}
+}
+
+func (rj *ReplaceJob) Key() string {
+	return "replace-key"
+}
+
+func (rj *ReplaceJob) Delay() time.Duration {
+	return 1000 * time.Millisecond
+}
+
+func (rj *ReplaceJob) Priority() int {
+	return 1
+}
+
+func (rj *ReplaceJob) RetryCount() int {
+	return 1
+}
+
+func (rj *ReplaceJob) MaxRetries() int {
+	return 0
+}
+
+func (rj *ReplaceJob) Execute() error {
+	fmt.Printf("执行任务 seq[%d]\n", rj.seq)
+	return nil
+}
+
+func (rj *ReplaceJob) OnComplete() {
+	if rj.CCB != nil {
+		rj.CCB()
+	}
+	fmt.Println("任务完成")
+}
+
+func (rj *ReplaceJob) ShouldReplace(old Job) bool {
+	if orj, ok := old.(*ReplaceJob); ok {
+		return rj.seq > orj.seq
+	}
+
+	return true
+}
+
+func TestReplace(t *testing.T) {
+	time.Sleep(2 * time.Second)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	ccb := func() {
+		wg.Done()
+	}
+	// 10 11
+	for i := range 4 {
+		seq := i
+		switch i {
+		case 0:
+			seq = 10
+		case 1:
+			seq = 11
+		}
+		job := NewReplaceJob(seq)
+		job.CCB = ccb
+		TaskManager.Submit(job)
+	}
+
+	wg.Wait()
+
+	/*
+
+		INFO: key 相同，但是没有满足条件
+		[2026/09/09 14:30:55] [INFO]  Job replace-key rejected by ShouldReplace condition, dropping.
+		[2026/09/09 14:30:55] [INFO]  Job replace-key rejected by ShouldReplace condition, dropping.
+
 	*/
 }
 

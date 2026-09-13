@@ -5,4 +5,5 @@ type IMConversationRow struct {
 	PeerID       int64  `gorm:"column:peer_id"`
 	PeerAvatar   string `gorm:"column:peer_avatar"`
 	PeerNickname string `gorm:"column:peer_nickname"`
+	LastReadSeq  int64  `gorm:"column:last_read_seq"`
 }

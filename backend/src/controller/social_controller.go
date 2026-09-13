@@ -49,11 +49,9 @@ func (sc *SocialController) applyAddFriend(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.SocialAddFriendRequest](c, func(err error) {
-		sc.LogWarn("addFriend body bind faild.", err, "username", username)
-	})
+	req, err := bind.Body[request.SocialAddFriendRequest](c)
 	if err != nil {
-		return err
+		return sc.LogWarn("addFriend body bind faild.", err, "username", username)
 	}
 
 	cmd := converter.ToSocialAddFriendCommand(req)
@@ -62,8 +60,7 @@ func (sc *SocialController) applyAddFriend(c fiber.Ctx) error {
 
 	err = sc.socialService.ApplyAddFriend(cmd)
 	if err != nil {
-		sc.LogWarn("addFriend", err)
-		return err
+		return sc.LogWarn("addFriend", err)
 	}
 
 	return resp.
@@ -77,16 +74,13 @@ func (sc *SocialController) applyAddGroup(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.SocialAddGroupRequestRequest](c, func(err error) {
-		sc.LogWarn("applyAddGroup bind body faild.", err, "username", username)
-	})
+	req, err := bind.Body[request.SocialAddGroupRequestRequest](c)
 	if err != nil {
-		return err
+		return sc.LogWarn("applyAddGroup bind body faild.", err, "username", username)
 	}
 
 	if req.InvitedID != "" && req.ApplyType != 2 {
-		sc.LogWarn("applyAddGroup", errs.SocialErrGroupRequestApplyType, "username", username)
-		return errs.SocialErrGroupRequestApplyType
+		return sc.LogWarn("applyAddGroup", errs.SocialErrGroupRequestApplyType, "username", username)
 	}
 
 	cmd := converter.ToSocialAddGroupRequestCommand(req)
@@ -95,8 +89,7 @@ func (sc *SocialController) applyAddGroup(c fiber.Ctx) error {
 
 	err = sc.socialService.ApplyAddGroup(cmd)
 	if err != nil {
-		sc.LogWarn("applyAddGroup", err, "username", username)
-		return err
+		return sc.LogWarn("applyAddGroup", err, "username", username)
 	}
 
 	return resp.
@@ -110,11 +103,9 @@ func (sc *SocialController) searchFriendRequest(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.SocialSearchFriendRequestRequest](c, func(err error) {
-		sc.LogWarn("searchFriendRequest body bind faild.", err, "username", username)
-	})
+	req, err := bind.Body[request.SocialSearchFriendRequestRequest](c)
 	if err != nil {
-		return err
+		return sc.LogWarn("searchFriendRequest body bind faild.", err, "username", username)
 	}
 
 	qu := converter.ToSocialSearchFriendRequestQuery(req)
@@ -123,8 +114,7 @@ func (sc *SocialController) searchFriendRequest(c fiber.Ctx) error {
 
 	result, err := sc.socialService.SearchFriendRequest(qu)
 	if err != nil {
-		sc.LogWarn("searchFriendRequest", err)
-		return err
+		return sc.LogWarn("searchFriendRequest", err)
 	}
 
 	return resp.
@@ -137,11 +127,9 @@ func (sc *SocialController) searchGroupRequest(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.SocialSearchGroupRequestRequest](c, func(err error) {
-		sc.LogWarn("searchGroupRequest body bind faild.", err, "username", username)
-	})
+	req, err := bind.Body[request.SocialSearchGroupRequestRequest](c)
 	if err != nil {
-		return err
+		return sc.LogWarn("searchGroupRequest body bind faild.", err, "username", username)
 	}
 
 	qu := converter.ToSocialSearchGroupRequestQuery(req)
@@ -150,8 +138,7 @@ func (sc *SocialController) searchGroupRequest(c fiber.Ctx) error {
 
 	result, err := sc.socialService.SearchGroupRequest(qu)
 	if err != nil {
-		sc.LogWarn("searchGroupRequest", err)
-		return err
+		return sc.LogWarn("searchGroupRequest", err)
 	}
 
 	return resp.
@@ -164,11 +151,9 @@ func (sc *SocialController) handleFriendRequest(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.SocialHandleFriendRequestRequest](c, func(err error) {
-		sc.LogWarn("searchFriendRequest body bind faild.", err, "username", username)
-	})
+	req, err := bind.Body[request.SocialHandleFriendRequestRequest](c)
 	if err != nil {
-		return err
+		return sc.LogWarn("searchFriendRequest body bind faild.", err, "username", username)
 	}
 
 	cmd := converter.ToSocialHandleFriendRequestCommand(req)
@@ -177,8 +162,7 @@ func (sc *SocialController) handleFriendRequest(c fiber.Ctx) error {
 
 	err = sc.socialService.HandleFriendRequest(cmd)
 	if err != nil {
-		sc.LogWarn("handleFriendRequest", err)
-		return err
+		return sc.LogWarn("handleFriendRequest", err)
 	}
 
 	return resp.
@@ -192,11 +176,9 @@ func (sc *SocialController) handleGroupRequest(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.SocialHandleGroupRequestRequest](c, func(err error) {
-		sc.LogWarn("handleGroupRequest body bind faild.", err, "username", username)
-	})
+	req, err := bind.Body[request.SocialHandleGroupRequestRequest](c)
 	if err != nil {
-		return err
+		return sc.LogWarn("handleGroupRequest body bind faild.", err, "username", username)
 	}
 
 	cmd := converter.ToSocialHandleGroupRequestCommand(req)
@@ -205,8 +187,7 @@ func (sc *SocialController) handleGroupRequest(c fiber.Ctx) error {
 
 	err = sc.socialService.HandleGroupRequest(cmd)
 	if err != nil {
-		sc.LogWarn("handleGroupRequest", err)
-		return err
+		return sc.LogWarn("handleGroupRequest", err)
 	}
 
 	return resp.
@@ -227,8 +208,7 @@ func (sc *SocialController) friendshipList(c fiber.Ctx) error {
 
 	result, err := sc.socialService.FriendshipList(&qu)
 	if err != nil {
-		sc.LogWarn("friendships", err)
-		return err
+		return sc.LogWarn("friendships", err)
 	}
 
 	return resp.

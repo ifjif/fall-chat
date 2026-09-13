@@ -39,65 +39,54 @@ func (ss *SocialService) Inject() {
 func (ss *SocialService) ApplyAddFriend(cmd *command.SocialAddFriendCommand) error {
 	targetId, err := ss.sf.Decode(cmd.TargetID)
 	if err != nil {
-		ss.LogWarn("ApplyAddFriend", err,
+		return ss.LogWarn("ApplyAddFriend", err,
 			"username", cmd.Username,
 			"reason", "解码目标id失败")
-		return err
 	}
 
 	// 对方和我
 	friendships, err := ss.dao.SearchFriendships(cmd.ID, targetId)
 	if err != nil {
-		ss.LogWarn("ApplyAddFriend", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddFriend", err, "username", cmd.Username,
 			"reason", "找好友关系错误",
 		)
-		return err
 	}
 
 	for _, fs := range friendships {
 		if fs.UserID == targetId && fs.FriendID == cmd.ID && fs.Status == 0 {
-			ss.LogWarn("ApplyAddFriend", errs.SocialErrBlacklisted, "username", cmd.Username)
-			return errs.SocialErrBlacklist
+			return ss.LogWarn("ApplyAddFriend", errs.SocialErrBlacklisted, "username", cmd.Username)
 		}
 
 		if fs.UserID == cmd.ID && fs.FriendID == targetId && fs.Status == 0 {
-			ss.LogWarn("ApplyAddFriend", errs.SocialErrBlacklist, "username", cmd.Username)
-			return errs.SocialErrBlacklist
+			return ss.LogWarn("ApplyAddFriend", errs.SocialErrBlacklist, "username", cmd.Username)
 		}
 	}
 
 	existsCount, err := ss.dao.SearchFriendRequestPendingAndAgreeCount(cmd.ID, targetId)
 	if err != nil {
-		ss.LogWarn("ApplyAddFriend", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddFriend", err, "username", cmd.Username,
 			"reason", "找好友申请数量错误",
 		)
-
-		return err
 	}
 
 	if existsCount != 0 {
-		ss.LogWarn("ApplyAddFriend", errs.SocialErrFriendRequestExists, "username", cmd.Username)
-		return errs.SocialErrFriendRequestExists
+		return ss.LogWarn("ApplyAddFriend", errs.SocialErrFriendRequestExists, "username", cmd.Username)
 	}
 
 	// 添加申请信息
 	fr := model.GenerateFriendRequest(cmd.ID, targetId, cmd.ApplyType, cmd.Greeting)
 	err = utils.InjectID4Model(ss.sf, &fr.Model)
 	if err != nil {
-		ss.LogWarn("ApplyAddFriend", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddFriend", err, "username", cmd.Username,
 			"reason", "创建主键id失败",
 		)
-
-		return err
 	}
 
 	err = ss.dao.CreateFriendRequest(fr)
 	if err != nil {
-		ss.LogWarn("ApplyAddFriend", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddFriend", err, "username", cmd.Username,
 			"reason", "创建好友申请失败",
 		)
-
-		return err
 	}
 
 	return nil
@@ -109,90 +98,76 @@ func (ss *SocialService) ApplyAddFriend(cmd *command.SocialAddFriendCommand) err
 func (ss *SocialService) ApplyAddGroup(cmd *command.SocialAddGroupRequestCommand) error {
 	groupID, err := ss.sf.Decode(cmd.GroupID)
 	if err != nil {
-		ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
 			"reason", "群ID解码失败")
-		return err
 	}
 
 	userID := cmd.ID
 	if cmd.InvitedID != "" {
 		invitedID, err := ss.sf.Decode(cmd.InvitedID)
 		if err != nil {
-			ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
+			return ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
 				"reason", "解码被邀请人ID失败")
-			return err
 		}
 
 		if userID == invitedID {
-			ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupRequestInviteSelf, "username", cmd.Username)
-			return errs.SocialErrGroupRequestInviteSelf
+			return ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupRequestInviteSelf, "username", cmd.Username)
 		}
 		userID = invitedID
 
 		// 邀请人需要在群
 		member, err := ss.dao.FindGroupMemberWithRole(groupID, cmd.ID)
 		if err != nil {
-			ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
+			return ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
 				"reason", "找群成员失败")
-			return err
 		}
 
 		if member == nil {
-			ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupMemberInvitorNotExists, "username", cmd.Username)
-			return errs.SocialErrGroupMemberInvitorNotExists
+			return ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupMemberInvitorNotExists, "username", cmd.Username)
 		}
 	}
 
 	existsCount, err := ss.dao.FindGroupRequestPendingAndAgreeCount(groupID, userID)
 	if err != nil {
-		ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
 			"reason", "找群申请数量失败")
-		return err
 	}
 
 	if existsCount > 0 {
-		ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupRequestExists, "username", cmd.Username)
-		return errs.SocialErrGroupRequestExists
+		return ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupRequestExists, "username", cmd.Username)
 	}
 
 	groupInfo, err := ss.dao.FindGroupWithStatus(groupID)
 	if err != nil {
-		ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
 			"reason", "找群失败")
-		return err
 	}
 	if groupInfo == nil {
-		ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupNotExists, "username", cmd.Username)
-		return errs.SocialErrGroupNotExists
+		return ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupNotExists, "username", cmd.Username)
 	}
 	if groupInfo.IsDisabled() {
-		ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupDisabled, "username", cmd.Username)
-		return errs.SocialErrGroupDisabled
+		return ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupDisabled, "username", cmd.Username)
 	}
 	if groupInfo.IsNotJoin() {
-		ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupNotJoin, "username", cmd.Username)
-		return errs.SocialErrGroupNotJoin
+		return ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupNotJoin, "username", cmd.Username)
 	}
 
 	existsCount, err = ss.dao.ExistsGroupMember(groupID, userID)
 	if err != nil {
-		ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
 			"reason", "找群成员数量失败")
-		return err
 	}
 
 	if existsCount > 0 {
-		ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupMemberExists, "username", cmd.Username)
-		return errs.SocialErrGroupMemberExists
+		return ss.LogWarn("ApplyAddGroup", errs.SocialErrGroupMemberExists, "username", cmd.Username)
 	}
 
 	// 添加申请
 	gr := model.GroupRequest{}
 	err = utils.InjectID4Model(ss.sf, &gr.Model)
 	if err != nil {
-		ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
 			"reason", "生成群申请ID失败")
-		return err
 	}
 	gr.ToGroupID = groupID
 	gr.FromUserID = userID
@@ -204,9 +179,8 @@ func (ss *SocialService) ApplyAddGroup(cmd *command.SocialAddGroupRequestCommand
 	gr.ActiveUniqueKey()
 	err = ss.dao.CreateOneGroupRequest(&gr)
 	if err != nil {
-		ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
+		return ss.LogWarn("ApplyAddGroup", err, "username", cmd.Username,
 			"reason", "创建群申请失败")
-		return err
 	}
 	return nil
 }
@@ -215,8 +189,7 @@ func (ss *SocialService) SearchFriendRequest(qu *query.SocialSearchFriendRequest
 	result := []*response.SocialSearchFriendRequestResult{}
 	mo, err := ss.dao.SearchFriendRequestRow(qu.ID, qu.FilterStatus, 10)
 	if err != nil {
-		ss.LogWarn("SearchFriendRequest", err, "找好友请求信息失败", "username", qu.Username)
-		return nil, err
+		return nil, ss.LogWarn("SearchFriendRequest", err, "找好友请求信息失败", "username", qu.Username)
 	}
 
 	for _, row := range mo {
@@ -231,8 +204,7 @@ func (ss *SocialService) SearchFriendRequest(qu *query.SocialSearchFriendRequest
 func (ss *SocialService) HandleFriendRequest(cmd *command.SocialHandleFriendRequestCommand) error {
 	targetID, err := ss.sf.Decode(cmd.HandleID)
 	if err != nil {
-		ss.LogWarn("HandleFriendRequest", err, "username", cmd.Username, "reason", "id解码失败")
-		return err
+		return ss.LogWarn("HandleFriendRequest", err, "username", cmd.Username, "reason", "id解码失败")
 	}
 
 	req, err := ss.dao.SearchFriendshipByToUerID(targetID, cmd.ID)
@@ -243,14 +215,12 @@ func (ss *SocialService) HandleFriendRequest(cmd *command.SocialHandleFriendRequ
 		} else {
 			contextInfo = append(contextInfo, "reason", "找好友请求任务失败")
 		}
-		ss.LogWarn("HandleFriendRequest", err, contextInfo...)
-		return err
+		return ss.LogWarn("HandleFriendRequest", err, contextInfo...)
 	}
 
 	// 必须是 待处理的
 	if req.Status != 0 {
-		ss.LogWarn("HandleFriendRequest", errs.SocialErrFriendRequestHandledOrExpired, "username", cmd.Username)
-		return errs.SocialErrFriendRequestHandledOrExpired
+		return ss.LogWarn("HandleFriendRequest", errs.SocialErrFriendRequestHandledOrExpired, "username", cmd.Username)
 	}
 
 	var reason string
@@ -300,10 +270,9 @@ func (ss *SocialService) HandleFriendRequest(cmd *command.SocialHandleFriendRequ
 		return nil
 	})
 	if err != nil {
-		ss.LogWarn("HandleFriendRequest", err, "username", cmd.Username,
+		return ss.LogWarn("HandleFriendRequest", err, "username", cmd.Username,
 			"action", cmd.Action,
 			"reason", reason)
-		return err
 	}
 
 	return nil
@@ -312,9 +281,8 @@ func (ss *SocialService) HandleFriendRequest(cmd *command.SocialHandleFriendRequ
 func (ss *SocialService) FriendshipList(qu *query.SocialFriendshipListQuery) ([]model.FriendshipRow, error) {
 	rows, err := ss.dao.SearchFriendshipList(qu.ID)
 	if err != nil {
-		ss.LogWarn("FriendshipList", err, "username", qu.Username,
+		return nil, ss.LogWarn("FriendshipList", err, "username", qu.Username,
 			"reason", "查找好友列表失败")
-		return nil, err
 	}
 	return rows, nil
 }
@@ -322,9 +290,8 @@ func (ss *SocialService) FriendshipList(qu *query.SocialFriendshipListQuery) ([]
 func (ss *SocialService) SearchGroupRequest(qu *query.SocialSearchGroupRequestQuery) ([]*response.SocialSearchGroupRequestResult, error) {
 	rows, err := ss.dao.SearchGroupRequestRow(qu.ID, qu.FilterStatus)
 	if err != nil {
-		ss.LogWarn("SearchGroupRequest", err, "username", qu.Username,
+		return nil, ss.LogWarn("SearchGroupRequest", err, "username", qu.Username,
 			"reason", "找群申请信息失败")
-		return nil, err
 	}
 
 	var result []*response.SocialSearchGroupRequestResult
@@ -341,68 +308,57 @@ func (ss *SocialService) HandleGroupRequest(cmd *command.SocialHandleGroupReques
 	// TODO: 注意并发处理，可加redis锁 , 群申请处理锁
 	handleID, err := ss.sf.Decode(cmd.HandleID)
 	if err != nil {
-		ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
+		return ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
 			"reason", "解码处理id失败")
-		return err
 	}
 	requestInfo, err := ss.dao.FindGroupRequestPendingInfo(handleID)
 	if err != nil {
-		ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
+		return ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
 			"reason", "找待处理的群申请失败")
-		return err
 	}
 
 	if requestInfo == nil {
-		ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupRequestNotExists, "username", cmd.Username,
+		return ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupRequestNotExists, "username", cmd.Username,
 			"handleID", handleID)
-		return errs.SocialErrGroupRequestNotExists
 	}
 
 	if !requestInfo.IsPendingStatus() {
-		ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupRequestHandledOrExpired, "username", cmd.Username,
+		return ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupRequestHandledOrExpired, "username", cmd.Username,
 			"handleID", handleID)
-		return errs.SocialErrGroupRequestHandledOrExpired
 	}
 
 	if requestInfo.FromUserID == cmd.HandleByUserID {
-		ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupRequestHandleSelf, "username", cmd.Username,
+		return ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupRequestHandleSelf, "username", cmd.Username,
 			"HandleID", handleID)
-		return errs.SocialErrGroupRequestHandleSelf
 	}
 
 	// TODO: 群成员增加锁
 	groupInfo, err := ss.dao.FindGroupWithMemberCount(requestInfo.ToGroupID)
 	if err != nil {
-		ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
+		return ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
 			"reason", "找群信息失败")
-		return err
 	}
 	if groupInfo.IsDisabled() {
-		ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupDisabled, "username", cmd.Username)
-		return errs.SocialErrGroupDisabled
+		return ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupDisabled, "username", cmd.Username)
 	}
 
 	// 判断成员数
 	tempRequset := &model.GroupRequest{Status: int8(cmd.Action)}
 	if tempRequset.IsApprovedStatus() && groupInfo.OverflowMember(1) {
-		ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupMemberOverflow, "username", cmd.Username)
-		return errs.SocialErrGroupMemberOverflow
+		return ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupMemberOverflow, "username", cmd.Username)
 	}
 
 	member, err := ss.dao.FindGroupMemberWithRole(requestInfo.ToGroupID, cmd.HandleByUserID)
 	if err != nil {
-		ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
+		return ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
 			"reason", "找群成员角色失败")
-		return err
 	}
 
 	if member == nil {
-		ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupMemberNotExists, "username", cmd.Username)
-		return errs.SocialErrGroupMemberNotExists
+		return ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupMemberNotExists, "username", cmd.Username)
 	}
 	if member.IsOrdinaryRole() {
-		ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupMemberRoleOrdinary, "username", cmd.Username)
-		return errs.SocialErrGroupMemberRoleOrdinary
+		return ss.LogWarn("HandleGroupRequest", errs.SocialErrGroupMemberRoleOrdinary, "username", cmd.Username)
 	}
 
 	// 修改请求状态，如是同意，添加群成员
@@ -447,7 +403,7 @@ func (ss *SocialService) HandleGroupRequest(cmd *command.SocialHandleGroupReques
 		return nil
 	})
 	if err != nil {
-		ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
+		return ss.LogWarn("HandleGroupRequest", err, "username", cmd.Username,
 			"reason", reason)
 	}
 	return nil

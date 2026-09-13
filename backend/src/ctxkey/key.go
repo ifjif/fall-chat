@@ -7,4 +7,7 @@ const (
 	UserPubID = "user_pub_id"
 	// 用户登录的 用户名 ,通常为string
 	Username = "username"
+
+	// 请求logger key
+	ContextKeyLogger = "slog_logger"
 )

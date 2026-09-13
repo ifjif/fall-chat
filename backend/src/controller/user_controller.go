@@ -48,17 +48,14 @@ func (uc *UserController) SetRoute(r fiber.Router) {
 
 // /user/register
 func (uc *UserController) register(c fiber.Ctx) error {
-	req, err := bind.Body[request.RegisterUserRequest](c, func(err error) {
-		uc.LogWarn("register Body绑定失败", err)
-	})
+	req, err := bind.Body[request.RegisterUserRequest](c)
 	if err != nil {
-		return err
+		return uc.LogWarn("register Body绑定失败", err)
 	}
 
 	pid, err := uc.userService.RegisterUser(req.Username, req.Password)
 	if err != nil {
-		uc.LogWarn("register", err, "username", req.Username)
-		return err
+		return uc.LogWarn("register", err, "username", req.Username)
 	}
 
 	return resp.
@@ -70,17 +67,14 @@ func (uc *UserController) register(c fiber.Ctx) error {
 
 // /user/login
 func (uc *UserController) login(c fiber.Ctx) error {
-	req, err := bind.Body[request.LoginUserRequest](c, func(err error) {
-		uc.LogWarn("login Body绑定失败", err)
-	})
+	req, err := bind.Body[request.LoginUserRequest](c)
 	if err != nil {
-		return err
+		return uc.LogWarn("login Body绑定失败", err)
 	}
 
 	result, err := uc.userService.Login(req.Username, req.Password)
 	if err != nil {
-		uc.LogWarn("login", err, "username", req.Username)
-		return err
+		return uc.LogWarn("login", err, "username", req.Username)
 	}
 
 	loginUserResp := converter.ToLoginUserResponse(result)
@@ -105,11 +99,9 @@ func (uc *UserController) resetPassword(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.ResetPasswordRequest](c, func(err error) {
-		uc.LogWarn("resetPassword Body绑定失败", err)
-	})
+	req, err := bind.Body[request.ResetPasswordRequest](c)
 	if err != nil {
-		return err
+		return uc.LogWarn("resetPassword Body绑定失败", err)
 	}
 
 	req.ID = id
@@ -119,8 +111,7 @@ func (uc *UserController) resetPassword(c fiber.Ctx) error {
 
 	err = uc.userService.ResetPassword(cmd)
 	if err != nil {
-		uc.LogWarn("resetPassword", err)
-		return err
+		return uc.LogWarn("resetPassword", err)
 	}
 
 	return resp.
@@ -132,18 +123,15 @@ func (uc *UserController) resetPassword(c fiber.Ctx) error {
 
 // /user/forgetPassword
 func (uc *UserController) forgetPassword(c fiber.Ctx) error {
-	req, err := bind.Body[request.ForgetPasswordRequest](c, func(err error) {
-		uc.LogWarn("forgetPassword Body绑定失败", err)
-	})
+	req, err := bind.Body[request.ForgetPasswordRequest](c)
 	if err != nil {
-		return err
+		return uc.LogWarn("forgetPassword Body绑定失败", err)
 	}
 
 	cmd := converter.ToForgetPasswordCommand(req)
 	err = uc.userService.ForgetPassword(cmd)
 	if err != nil {
-		uc.LogWarn("forgetPassword", err)
-		return err
+		return uc.LogWarn("forgetPassword", err)
 	}
 
 	return resp.
@@ -158,11 +146,9 @@ func (uc *UserController) updateProfile(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
-	req, err := bind.Body[request.UpdateProfileRequest](c, func(err error) {
-		uc.LogWarn("updateProfile Body绑定失败", err)
-	})
+	req, err := bind.Body[request.UpdateProfileRequest](c)
 	if err != nil {
-		return err
+		return uc.LogWarn("updateProfile Body绑定失败", err)
 	}
 
 	req.ID = id
@@ -171,9 +157,7 @@ func (uc *UserController) updateProfile(c fiber.Ctx) error {
 	cmd := converter.ToUpdateProfileCommand(req)
 
 	if err := uc.userService.UpdateProfile(cmd); err != nil {
-		uc.LogWarn("updateProfile", err)
-
-		return err
+		return uc.LogWarn("updateProfile", err)
 	}
 	return resp.
 		New(c).
@@ -186,13 +170,11 @@ func (uc *UserController) updateProfile(c fiber.Ctx) error {
 func (uc *UserController) search(c fiber.Ctx) error {
 	userID := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
-	req, err := bind.Body[request.SearchRequest](c, func(err error) {
-		uc.LogWarn("search Body绑定失败", err,
+	req, err := bind.Body[request.SearchRequest](c)
+	if err != nil {
+		return uc.LogWarn("search Body绑定失败", err,
 			"username", username,
 		)
-	})
-	if err != nil {
-		return err
 	}
 
 	req.Username = username
@@ -202,8 +184,7 @@ func (uc *UserController) search(c fiber.Ctx) error {
 
 	results, err := uc.userService.Search(qu)
 	if err != nil {
-		uc.LogWarn("search", err)
-		return err
+		return uc.LogWarn("search", err)
 	}
 
 	return resp.

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"zzc/fall-chat/src/errs"
 
 	"github.com/go-playground/validator/v10"
@@ -22,21 +23,23 @@ func InitFiber() {
 		BodyLimit:       200 * 1024 * 1024,
 		StructValidator: &structValidator{validate: validator.New()},
 		ErrorHandler: func(c fiber.Ctx, err error) error {
+			var bizErr *errs.BizError
 			// 业务错误
-			if err, ok := err.(*errs.BizError); ok {
-				return c.Status(err.Status).JSON(fiber.Map{
-					"code":    err.Code,
-					"status":  err.Status,
-					"message": err.Message,
+			if errors.As(err, &bizErr) {
+				return c.Status(bizErr.Status).JSON(fiber.Map{
+					"code":    bizErr.Code,
+					"status":  bizErr.Status,
+					"message": bizErr.Message,
 				})
 			}
 
 			// fiber 错误
-			if err, ok := err.(*fiber.Error); ok {
-				return c.Status(err.Code).JSON(fiber.Map{
-					"code":    err.Code,
-					"status":  err.Code,
-					"message": err.Message,
+			var fiberErr *fiber.Error
+			if errors.As(err, &fiberErr) {
+				return c.Status(fiberErr.Code).JSON(fiber.Map{
+					"code":    fiberErr.Code,
+					"status":  fiberErr.Code,
+					"message": fiberErr.Message,
 				})
 			}
 

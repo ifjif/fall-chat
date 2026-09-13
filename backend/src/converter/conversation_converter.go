@@ -1,12 +1,14 @@
 package converter
 
 import (
+	"zzc/fall-chat/src/dto/request"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/query"
 )
 
-func ToIMConversationListResponse(row *model.IMConversationRow) *response.IMConversationListResponse {
-	return &response.IMConversationListResponse{
+func ToIMConversationResponse(row *model.IMConversationRow) *response.IMConversationResponse {
+	return &response.IMConversationResponse{
 		ID:              row.PublicID,
 		Type:            row.GetConvTypeText(),
 		Name:            row.PeerNickname,
@@ -15,5 +17,14 @@ func ToIMConversationListResponse(row *model.IMConversationRow) *response.IMConv
 		LastMsgPreview:  row.LastMsgPreview,
 		LastMsgSenderID: row.LastMsgSenderID,
 		LastMsgTime:     row.LastMsgTime,
+		LastMsgSeq:      row.LastMsgSeq,
+		LastReadSeq:     row.LastReadSeq,
+		UnreadCount:     row.LastMsgSeq - row.LastReadSeq,
+	}
+}
+
+func ToConvSingleQuery(req *request.ConvSingleRequest) *query.ConvSingleQuery {
+	return &query.ConvSingleQuery{
+		ConvID: req.ConvID,
 	}
 }

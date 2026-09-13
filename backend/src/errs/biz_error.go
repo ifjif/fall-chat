@@ -9,7 +9,7 @@ type BizError struct {
 }
 
 func (be *BizError) Error() string {
-	return fmt.Sprintf("[%d] %s", be.Status, be.Message)
+	return fmt.Sprintf("BizError[%d] %s", be.Status, be.Message)
 }
 
 // code = status
@@ -19,4 +19,8 @@ func NewStatusError(status int, message string) *BizError {
 
 func NewBizError(code, status int, message string) *BizError {
 	return &BizError{Status: status, Code: code, Message: message}
+}
+
+func (b *BizError) Meger(err error) error {
+	return fmt.Errorf("%w. internal: %w", b, err)
 }

@@ -20,6 +20,7 @@ type Job interface {
 	MaxRetries() int      // 最大允许重试次数
 	Execute() error
 	OnComplete()
+	ShouldReplace(old Job) bool // ond:防抖map中已存在的旧任务 true:允许覆盖 false:丢弃新任务
 }
 
 // 2.延迟任务管理器
@@ -31,6 +32,12 @@ type DelayedTaskManager struct {
 	wg               sync.WaitGroup   // 优雅关闭时等待
 	ctx              context.Context
 	cancel           context.CancelFunc
+}
+
+// 3.防抖map中的实体
+type debounceEntry struct {
+	job   Job
+	timer *time.Timer
 }
 
 var TaskManager *DelayedTaskManager
@@ -153,8 +160,15 @@ func (m *DelayedTaskManager) handleJob(job Job) {
 
 	// 防抖逻辑，取消旧定时任务，设置新定时任务
 	if val, ok := m.debounceMap.Load(key); ok {
-		if timer, ok := val.(*time.Timer); ok {
-			timer.Stop()
+		if entry, ok := val.(*debounceEntry); ok {
+			// 判断是否允许覆盖
+			if !job.ShouldReplace(entry.job) {
+				utils.LogInfo("Job %s rejected by ShouldReplace condition, dropping.", key)
+				// 丢弃任务
+				return
+			}
+			// 停止旧定时器
+			entry.timer.Stop()
 		}
 	}
 
@@ -164,7 +178,10 @@ func (m *DelayedTaskManager) handleJob(job Job) {
 		m.debounceMap.Delete(key)
 	})
 
-	m.debounceMap.Store(key, timer)
+	m.debounceMap.Store(key, &debounceEntry{
+		job:   job,
+		timer: timer,
+	})
 }
 
 // 安全执行器包装：捕获panic 并处理重试
@@ -247,8 +264,8 @@ func (m *DelayedTaskManager) Shutdown() {
 // 清理防抖map中的 定时器
 func (m *DelayedTaskManager) cleanupDebounceMap() {
 	m.debounceMap.Range(func(key, value any) bool {
-		if timer, ok := value.(*time.Timer); ok {
-			timer.Stop()
+		if entry, ok := value.(*debounceEntry); ok {
+			entry.timer.Stop()
 		}
 		m.debounceMap.Delete(key)
 		return true

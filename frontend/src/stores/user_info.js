@@ -31,6 +31,9 @@ export const useUserStore = defineStore("user", () => {
   function getAvatar() {
     return userInfo.value?.avatar
   }
+  function getNickname() {
+    return userInfo.value?.nickname
+  }
 
   function updateInfo(data) {
     setInfo(data)
@@ -44,6 +47,7 @@ export const useUserStore = defineStore("user", () => {
     userInfo,
     getId,
     getAvatar,
+    getNickname,
     loginSuccess,
     updateInfo,
     fetchUserAvatarUrl

@@ -31,40 +31,37 @@ func (ac *AuthController) SetRoute(f fiber.Router) {
 func (ac *AuthController) refresh(c fiber.Ctx) error {
 	refreshToken := c.Cookies("refresh_token")
 	if refreshToken == "" {
-		return resp.
+		err := resp.
 			New(c).
 			Err(fiber.StatusUnauthorized).
 			Message("refresh token不存在，请重新登录").
 			Failure()
+		return ac.LogWarn("refresh", err)
 	}
 
 	claims, err := utils.ParseJWT(refreshToken)
 	if err != nil {
-		ac.LogWarn("refresh", err, "reason", "refresh token解析失败")
-		return resp.
+		err = resp.
 			New(c).
 			Err(fiber.StatusUnauthorized).
 			Message("refresh凭证错误").
-			Failure()
+			Failure().Meger(err)
+		return ac.LogWarn("refresh", err, "reason", "refresh token解析失败")
 	}
 
 	if claims.Type != utils.TOKEN_REFRESH_TYPE {
-		ac.LogWarn("refresh", errs.CommonErrJWTTokenType,
+		return ac.LogWarn("refresh", errs.CommonErrJWTTokenType,
 			"username", claims.Username,
 		)
-
-		return errs.CommonErrJWTTokenType
 	}
 
 	// 生成新 access token
 	accessToken, expiresIn, err := utils.GenerateAccessToken(claims.UserID, claims.Username, claims.DeviceID)
 	if err != nil {
-		ac.LogWarn("refresh", err,
+		return ac.LogWarn("refresh", err,
 			"username", claims.Username,
 			"reason", "生成access token失败",
 		)
-
-		return errs.CommonErrJWTTokenGeneration
 	}
 
 	return resp.

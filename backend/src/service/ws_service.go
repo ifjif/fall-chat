@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -8,10 +9,13 @@ import (
 	"zzc/fall-chat/src/data"
 	"zzc/fall-chat/src/dto/request"
 	"zzc/fall-chat/src/dto/response"
+	"zzc/fall-chat/src/mess"
+	messagequeue "zzc/fall-chat/src/message_queue"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/utils"
 
 	"github.com/gofiber/contrib/v3/websocket"
+	"github.com/segmentio/kafka-go"
 	"gorm.io/gorm"
 )
 
@@ -130,25 +134,6 @@ func (ws *WsService) Add(id string, conn *websocket.Conn) {
 	ws.hub.AddClient(id, conn)
 }
 
-func (ws *WsService) HandleMessage(id string, message request.WSMessage) {
-	if message.Type == "ping" {
-		return
-	}
-
-	utils.LogInfo("Type[%s] %d: %+v 发送：%s. ", message.Type, message.Timestamp, message.Data, id)
-
-	if message.Type == "chat" {
-		ws.handleChatMessage(id, message)
-		return
-	}
-
-	msg := response.WSMessage{
-		Type: "chat",
-		Data: message.Data,
-	}
-	ws.SendMessage(id, msg)
-}
-
 /*
 *
 
@@ -162,40 +147,32 @@ func (ws *WsService) HandleMessage(id string, message request.WSMessage) {
 
 *
 */
-func (ws *WsService) handleChatMessage(id string, message request.WSMessage) {
-	var chatData request.ChatData
-	err := json.Unmarshal(message.Data, &chatData)
-	if err != nil {
-		ws.LogError("handleChatMessage", err, "id", id, "reason", "json消息反序列化失败")
-		// TODO: 发送错误
-		return
-	}
-
+func (ws *WsService) HandleChatMessage(id string, chatData *request.ChatData) error {
 	if id != chatData.From {
 		ws.LogWarn("handleChatMessage", nil, "id", id, "from", chatData.From,
 			"reason", "消息携带的发送id与连接的id不匹配")
 		// TODO: 发送错误
-		return
+		return nil
 	}
 
 	if chatData.Type != 0 && chatData.Type != 1 {
 		ws.LogWarn("handleChatMessage", nil, "id", id, "reason", "会话类型错误")
-		// TODO 发送错误
-		return
+		// TODO: 发送错误
+		return nil
 	}
 
 	rawID, err := ws.sf.Decode(id)
 	if err != nil {
 		ws.LogError("handleChatMessage", err, "id", id, "reason", "发送方id解码失败")
 		// TODO: 发送错误
-		return
+		return err
 	}
 	rawToID, err := ws.sf.Decode(chatData.To)
 	if err != nil {
 		ws.LogError("handleChatMessage", err, "id", id, "toID", chatData.To,
 			"reason", "接受方id解码失败")
 		// TODO: 发送错误
-		return
+		return err
 	}
 	minID, maxID := rawID, rawToID
 	if rawID > rawToID {
@@ -208,14 +185,14 @@ func (ws *WsService) handleChatMessage(id string, message request.WSMessage) {
 	if err != nil {
 		ws.LogWarn("createConversation", err, "id", id, "to", chatData.To, "reason", "找用户会话失败")
 		// TODO: 发送错误
-		return
+		return err
 	}
 
 	if conv == nil {
 		conv, err = ws.createConversation(rawID, rawToID, singleKey, chatData)
 		if err != nil {
 			// TODO: 发送错误
-			return
+			return err
 		}
 	}
 
@@ -223,10 +200,11 @@ func (ws *WsService) handleChatMessage(id string, message request.WSMessage) {
 	if err != nil {
 		ws.LogError("createConversation", err, "id", id, "to", chatData.To,
 			"reason", "生成消息seq失败")
-		// TODO 发送错误
-		return
+		// TODO: 发送错误
+		return err
 	}
 
+	preview := utils.TruncateBytes(chatData.Content, 256)
 	lastMessage := model.IMMessage{
 		SenderID: rawID,
 		Content:  chatData.Content,
@@ -238,7 +216,7 @@ func (ws *WsService) handleChatMessage(id string, message request.WSMessage) {
 	if err != nil {
 		ws.LogError("createConversation", err, "id", id, "to", chatData.To, "reason", "生成消息id失败")
 		// TODO: 发送错误
-		return
+		return err
 	}
 
 	// 更新会话 最后一条消息 异步
@@ -247,14 +225,34 @@ func (ws *WsService) handleChatMessage(id string, message request.WSMessage) {
 	updateConv := &model.IMConversation{}
 	updateConv.ID = conv.ID
 	updateConv.SetLastMessage(&lastMessage)
-	// go
+
+	// TODO:消息发送待抽离
+	ucMess := mess.UpdateConvMess{}
+	ucMess.ConvID = int64(conv.ID)
+	ucMess.ConvType = int(conv.ConvType)
+	ucMess.PeerID = rawToID
+	ucMess.MsgID = int64(lastMessage.ID)
+	ucMess.MsgSenderID = rawID
+	ucMess.MsgPreview = preview
+	ucMess.MsgTime = lastMessage.SendTime
+	ucMess.Seq = lastMessage.Seq
+	messData, err := json.Marshal(ucMess)
+	if err != nil {
+		// TODO: 发送错误
+		return err
+	}
+	go messagequeue.KWriter().WriteMessages(context.Background(), kafka.Message{
+		Topic: "update-conv-member",
+		Key:   []byte(conv.PublicID),
+		Value: messData,
+	})
 
 	// 创建消息
 	err = ws.dao.CreateIMMesage(&lastMessage)
 	if err != nil {
 		ws.LogError("handleChatMessage", err, "id", id, "to", chatData.To, "reason", "创建消息失败")
 		// TODO: 发送错误
-		return
+		return err
 	}
 
 	// 发送成功 ACK
@@ -262,10 +260,11 @@ func (ws *WsService) handleChatMessage(id string, message request.WSMessage) {
 		Type:      "chat_ack",
 		Timestamp: time.Now().UnixMilli(),
 		Data: response.ChatACK{
-			Conv:        conv.PublicID,
+			ConvID:      conv.PublicID,
 			To:          chatData.To,
 			ServerMsgID: lastMessage.PublicID,
 			ClientMsgID: chatData.ClientMsgID,
+			MsgSeq:      lastMessage.Seq,
 		},
 	}
 
@@ -276,17 +275,20 @@ func (ws *WsService) handleChatMessage(id string, message request.WSMessage) {
 		Type:      "chat_reply",
 		Timestamp: time.Now().UnixMilli(),
 		Data: response.ChatReply{
-			Conv:     conv.PublicID,
+			ConvID:   conv.PublicID,
 			To:       chatData.To,
 			MsgID:    lastMessage.PublicID,
 			SenderID: chatData.From,
 			Content:  chatData.Content,
+			MsgSeq:   lastMessage.Seq,
 		},
 	}
 	ws.SendMessage(chatData.To, msg2)
+
+	return nil
 }
 
-func (ws *WsService) createConversation(id int64, toID int64, singleKey string, message request.ChatData) (*model.IMConversation, error) {
+func (ws *WsService) createConversation(id int64, toID int64, singleKey string, message *request.ChatData) (*model.IMConversation, error) {
 	conv := &model.IMConversation{
 		SingleKey: singleKey,
 		ConvType:  int8(message.Type),

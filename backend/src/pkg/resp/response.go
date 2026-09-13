@@ -46,7 +46,7 @@ func (r *Responser) Message(message string) *Responser {
 	return r
 }
 
-func (r *Responser) Failure() error {
+func (r *Responser) Failure() *errs.BizError {
 	r.err.Message = r.message
 	return r.err
 }

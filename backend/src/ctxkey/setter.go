@@ -15,3 +15,7 @@ func SetUserPubID(c fiber.Ctx, v any) {
 func SetUsername(c fiber.Ctx, v any) {
 	c.Locals(Username, v)
 }
+
+func SetLogger(c fiber.Ctx, v any) {
+	c.Locals(ContextKeyLogger, v)
+}

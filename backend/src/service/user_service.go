@@ -39,12 +39,13 @@ func (us *UserService) FindByID(id int64) (*model.User, error) {
 
 	result := us.db.Take(user)
 	if result.Error != nil {
-		us.LogWarn("FindByID", result.Error, "id", id)
+		err := result.Error
+
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errs.UserErrNotExistUser
+			err = errs.UserErrNotExistUser
 		}
 
-		return nil, result.Error
+		return nil, us.LogWarn("FindByID", err, "id", id)
 	}
 
 	return user, nil
@@ -54,12 +55,12 @@ func (us *UserService) FindByUsername(username string) (*model.User, error) {
 	user := &model.User{}
 	result := us.db.Where("username = ?", username).Take(user)
 	if result.Error != nil {
-		us.LogWarn("FindByUsername", result.Error, "username", username)
+		err := result.Error
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errs.UserErrUsernameOrPassword
+			err = errs.UserErrUsernameOrPassword
 		}
 
-		return nil, result.Error
+		return nil, us.LogWarn("FindByUsername", err, "username", username)
 	}
 
 	return user, nil
@@ -69,8 +70,7 @@ func (us *UserService) CountByUsername(username string) (int64, error) {
 	var count int64
 	result := us.db.Model(&model.User{}).Where("username = ?", username).Count(&count)
 	if result.Error != nil {
-		us.LogWarn("CountByUsername", result.Error, "username", username)
-		return 0, result.Error
+		return 0, us.LogWarn("CountByUsername", result.Error, "username", username)
 	}
 
 	return count, nil
@@ -79,8 +79,7 @@ func (us *UserService) CountByUsername(username string) (int64, error) {
 func (us *UserService) createUser(user *model.User) error {
 	result := us.db.Create(user)
 	if result.Error != nil {
-		us.LogWarn("createUser", result.Error)
-		return result.Error
+		return us.LogWarn("createUser", result.Error)
 	}
 
 	return nil
@@ -91,24 +90,22 @@ func (us *UserService) RegisterUser(username, password string) (string, error) {
 
 	count, err := us.CountByUsername(username)
 	if err != nil {
-		return pID, err
+		return pID, us.LogWarn("RegisterUser", err)
 	}
 
 	if count > 0 {
-		us.LogWarn("RegisterUser", errs.UserErrExistUser,
+		return pID, us.LogWarn("RegisterUser", errs.UserErrExistUser,
 			"username", username,
 			"reason", "用户已存在",
 		)
-		return pID, errs.UserErrExistUser
 	}
 
 	id, err := us.sf.NextID()
 	if err != nil {
-		us.LogWarn("RegisterUser", err,
+		return pID, us.LogWarn("RegisterUser", err,
 			"username", username,
 			"reason", "生成ID失败",
 		)
-		return pID, err
 	}
 
 	pID = us.sf.Encode(id)
@@ -121,42 +118,38 @@ func (us *UserService) RegisterUser(username, password string) (string, error) {
 
 	err = us.createUser(user)
 
-	return pID, err
+	return pID, us.LogWarn("RegisterUser", err)
 }
 
 func (us *UserService) Login(username, password string) (*response.LoginResult, error) {
 	user, err := us.FindByUsername(username)
 	if err != nil {
-		return nil, err
+		return nil, us.LogWarn("Login", err)
 	}
 	err = utils.DecryptPassword(user.Password, password)
 	if err != nil {
-		us.LogWarn("Login", err, "username", username, "reason", "密码不匹配")
-		return nil, errs.UserErrUsernameOrPassword
+		return nil, us.LogWarn("Login", errs.UserErrUsernameOrPassword.Meger(err), "username", username, "reason", "密码不匹配")
 	}
 
 	if *user.Status == 0 {
-		us.LogWarn("Login", errs.UserErrAccountDisabled, "username", username)
-		return nil, errs.UserErrAccountDisabled
+		return nil, us.LogWarn("Login", errs.UserErrAccountDisabled, "username", username)
 	}
 
 	// arg1 jti存redis
 	_, refreshToken, refreshExpiresIn, err := utils.GenerateRefreshToken(user.PublicID, user.Username, "")
 	if err != nil {
-		us.LogWarn("Login", err,
+		return nil, us.LogWarn("Login", err,
 			"username", user.Username,
 			"reason", "JWT refresh token 生成失败",
 		)
-		return nil, errs.CommonErrJWTTokenGeneration
 	}
 
 	accessToken, accessExpiresIn, err := utils.GenerateAccessToken(user.PublicID, user.Username, "")
 	if err != nil {
-		us.LogWarn("Login", err,
+		return nil, us.LogWarn("Login", err,
 			"username", user.Username,
 			"reason", "JWT access token 生成失败",
 		)
-		return nil, errs.CommonErrJWTTokenGeneration
 	}
 
 	result := &response.LoginResult{
@@ -173,12 +166,11 @@ func (us *UserService) Login(username, password string) (*response.LoginResult, 
 func (us *UserService) ResetPassword(cmd *command.RestPasswordCommand) error {
 	err := us.emailService.VerifyPasswordRestCode(cmd.CodeID, cmd.Code)
 	if err != nil {
-		us.LogError("ResetPassword", err,
+		return us.LogError("ResetPassword", err,
 			"username", cmd.Username,
 			"code_id", cmd.CodeID,
 			"reason", "verify_code_faild",
 		)
-		return err
 	}
 
 	user, err := us.FindByUsername(cmd.Username)
@@ -188,74 +180,65 @@ func (us *UserService) ResetPassword(cmd *command.RestPasswordCommand) error {
 
 	err = utils.DecryptPassword(user.Password, cmd.OldPass)
 	if err != nil {
-		us.LogWarn("ResetPassword", err,
+		return us.LogWarn("ResetPassword", err,
 			"username", cmd.Username,
 			"reason", "密码不匹配",
 		)
-		return errs.UserErrUsernameOrPassword
 	}
 
 	if cmd.Email != user.Email {
-		us.LogWarn("ResetPassword", errs.UserErrEmail,
+		return us.LogWarn("ResetPassword", errs.UserErrEmail,
 			"username", cmd.Username,
 		)
-		return errs.UserErrEmail
 	}
 
 	if *user.Status == 0 {
-		us.LogWarn("ResetPassword", errs.UserErrAccountDisabled,
+		return us.LogWarn("ResetPassword", errs.UserErrAccountDisabled,
 			"username", cmd.Username,
 		)
-		return errs.UserErrAccountDisabled
 	}
 
 	newPass := utils.EncryptPassword(cmd.NewPass)
 
 	result := us.db.Model(user).Update("password", newPass)
 	if result.Error != nil {
-		us.LogWarn("ResetPassword", result.Error,
+		return us.LogWarn("ResetPassword", result.Error,
 			"username", us.name,
 			"reason", "更新密码失败",
 		)
 	}
-	return result.Error
+	return nil
 }
 
 func (us *UserService) ForgetPassword(cmd *command.ForgetPasswordCommand) error {
 	err := us.emailService.VerifyPasswordRestCode(cmd.CodeID, cmd.Code)
 	if err != nil {
-		us.LogError("ForgetPassword", err,
+		return us.LogError("ForgetPassword", err,
 			"username", cmd.Username,
 			"email", cmd.Email,
 			"reason", "verify_code_faild",
 		)
-
-		return err
 	}
 
 	user, err := us.FindByUsername(cmd.Username)
 	if err != nil {
-		return err
+		return us.LogError("ForgetPassword", err)
 	}
 
 	if user.Email != cmd.Email {
-		us.LogWarn("ForgetPassword", errs.UserErrEmail,
+		return us.LogWarn("ForgetPassword", errs.UserErrEmail,
 			"username", cmd.Username,
 		)
-
-		return errs.UserErrEmail
 	}
 
 	newPass := utils.EncryptPassword(cmd.NewPass)
 
 	result := us.db.Model(user).Update("password", newPass)
 	if result.Error != nil {
-		us.LogWarn("ForgetPassword", result.Error,
+		return us.LogWarn("ForgetPassword", result.Error,
 			"username", cmd.Username,
 			"reason", "更新密码失败",
 		)
-
-		return result.Error
 	}
 
 	return nil
@@ -264,20 +247,18 @@ func (us *UserService) ForgetPassword(cmd *command.ForgetPasswordCommand) error 
 func (us *UserService) UpdateProfile(cmd *command.UpdateProfileCommand) error {
 	user, err := us.FindByID(cmd.ID)
 	if err != nil {
-		return err
+		return us.LogError("UpdateProfile", err)
 	}
 
 	if err := utils.DecryptPassword(user.Password, cmd.Password); err != nil {
-		us.LogWarn("UpdateProfile", err,
+		return us.LogWarn("UpdateProfile", errs.UserErrUsernameOrPassword.Meger(err),
 			"username", user.Username,
 			"reason", "密码不匹配",
 		)
-		return errs.UserErrUsernameOrPassword
 	}
 
 	if *user.Status == 0 {
-		us.LogWarn("UpdateProfile", errs.UserErrAccountDisabled, "username", user.Username)
-		return errs.UserErrAccountDisabled
+		return us.LogWarn("UpdateProfile", errs.UserErrAccountDisabled, "username", user.Username)
 	}
 
 	searchFlag := int8(cmd.SearchFlag)
@@ -293,12 +274,10 @@ func (us *UserService) UpdateProfile(cmd *command.UpdateProfileCommand) error {
 		Updates(updateUser)
 
 	if result.Error != nil {
-		us.LogWarn("UpdateProfile", result.Error,
+		return us.LogWarn("UpdateProfile", result.Error,
 			"username", user.Username,
 			"reason", "更新profile失败",
 		)
-
-		return result.Error
 	}
 
 	return nil
@@ -374,13 +353,11 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 			Scan(&userRows)
 
 		if result.Error != nil {
-			us.LogWarn("search", result.Error,
+			return nil, us.LogWarn("search", result.Error,
 				"username", qu.Username,
 				"searchName", searchName,
 				"reason", "模糊找用户失败",
 			)
-
-			return nil, result.Error
 		}
 
 	}
@@ -426,12 +403,11 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 			Scan(&groupRows)
 
 		if result.Error != nil {
-			us.LogWarn("search", result.Error,
+			return nil, us.LogWarn("search", result.Error,
 				"username", qu.Username,
 				"searchName", searchName,
 				"reason", "模糊找群失败",
 			)
-			return nil, result.Error
 		}
 	}
 
@@ -458,8 +434,8 @@ func (us *UserService) Search(qu *query.SearchQuery) (*response.SearchResult, er
 func (us *UserService) Profile(id int64) (*model.User, error) {
 	user, err := us.FindByID(id)
 	if err != nil {
-		return nil, err
+		return nil, us.LogError("Profile", err)
 	}
 
-	return user, err
+	return user, nil
 }

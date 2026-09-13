@@ -2,7 +2,10 @@
   <template v-for="convs in [convStore.tempConversations, convStore.conversations]">
     <fl-menu @select="handleSelect" keyProp="id" :activeIndex="active" :isCollapse="false" :width="260" :data="convs">
       <template #icon="{ item }">
-        <Avatar :uri="item.avatar"></Avatar>
+        <div style="position:relative;">
+          <Avatar :uri="item.avatar"></Avatar>
+          <Bedge :max="999" :value="item.unread_count"></Bedge>
+        </div>
       </template>
       <template #title="{ item }">
         <div>
@@ -14,7 +17,7 @@
               {{ item.name }}
             </span>
             <span style="font-size: 10px;">
-              {{ item.last_msg_send_time }}
+              {{ item.last_msg_time }}
             </span>
           </div>
           <div style="font-size: 12px;
@@ -32,6 +35,7 @@
 import { computed } from 'vue'
 import { useConversationStore } from '@/stores/conversation_store'
 import Avatar from '@/components/avatar.vue'
+import Bedge from '@/components/bedge.vue'
 const convStore = useConversationStore()
 const active = computed(() => convStore.getActiveConv().id)
 

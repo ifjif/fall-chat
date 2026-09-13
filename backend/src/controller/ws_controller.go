@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"time"
 	"zzc/fall-chat/src/ctxkey"
 	"zzc/fall-chat/src/dto/request"
+	"zzc/fall-chat/src/dto/response"
+	"zzc/fall-chat/src/errs"
 	"zzc/fall-chat/src/middleware"
 	"zzc/fall-chat/src/pkg/resp"
 	"zzc/fall-chat/src/service"
@@ -15,15 +18,19 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+type MessageHandler func(id string, message *request.WSMessage)
+
 type WSController struct {
 	BaseController
-	wsService *service.WsService
+	wsService       *service.WsService
+	messageHandlers map[string]MessageHandler
 }
 
 func NewWSController(name string) *WSController {
 	bs := BaseController{name: name}
 	return &WSController{
-		BaseController: bs,
+		BaseController:  bs,
+		messageHandlers: make(map[string]MessageHandler),
 	}
 }
 
@@ -43,6 +50,8 @@ func (wsc *WSController) SetRoute(r fiber.Router) {
 	upgrade.Use(middleware.WsUpgrade)
 
 	upgrade.Get("/:id", wsc.websocketHandler())
+
+	wsc.messageHandlers["chat"] = wsc.chatMessageHandler
 }
 
 func (wsc *WSController) accessURL(c fiber.Ctx) error {
@@ -95,7 +104,61 @@ func (wsc *WSController) websocketHandler() func(fiber.Ctx) error {
 				continue
 			}
 
-			wsc.wsService.HandleMessage(id, message)
+			wsc.dispatchMessage(id, &message)
 		}
 	})
+}
+
+func (wsc *WSController) dispatchMessage(id string, message *request.WSMessage) {
+	mType := message.Type
+
+	if mType != "ping" {
+		wsc.LogInfo("dispatchMessage", "id:", id, "type:", mType)
+	}
+
+	messageHandler, ok := wsc.messageHandlers[mType]
+
+	if ok {
+		messageHandler(id, message)
+		return
+	}
+	wsc.unmatchHandler(id, message)
+}
+
+func (wsc *WSController) unmatchHandler(id string, message *request.WSMessage) {
+	wsc.errorHandler(id, "unmatch", errs.ErrWSNotFound)
+}
+
+func (wsc *WSController) errorHandler(id string, ty string, err error) {
+	// 错误的类型
+	errType := ty + "_error"
+
+	respErr := response.WSMessage{
+		Type:      errType,
+		Timestamp: time.Now().UnixMilli(),
+	}
+
+	if _, ok := err.(*errs.WSError); ok {
+		respErr.Data = err
+	} else {
+		respErr.Data = errs.ErrWSInternal
+	}
+
+	wsc.wsService.SendMessage(id, respErr)
+}
+
+func (wsc *WSController) chatMessageHandler(id string, message *request.WSMessage) {
+	var chatData request.ChatData
+	err := json.Unmarshal(message.Data, &chatData)
+	if err != nil {
+		wsc.LogWarn("handleChatMessage", err, "id", id, "reason", "json消息反序列化失败")
+		wsc.errorHandler(id, message.Type, err)
+		return
+	}
+
+	err = wsc.wsService.HandleChatMessage(id, &chatData)
+	if err != nil {
+		wsc.LogWarn("handleChatMessage", err, "id", id)
+		wsc.errorHandler(id, message.Type, err)
+	}
 }

@@ -1,6 +1,10 @@
 package ctxkey
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"log/slog"
+
+	"github.com/gofiber/fiber/v3"
+)
 
 // 从Locals中安全获取 UserID
 // 不存在或类型不匹配，返回零值
@@ -31,4 +35,13 @@ func GetUsername(c fiber.Ctx) string {
 	}
 
 	return v
+}
+
+func GetLogger(c fiber.Ctx) *slog.Logger {
+	if v := c.Locals(ContextKeyLogger); v != nil {
+		return v.(*slog.Logger)
+	}
+
+	// 没有，返回默认
+	return slog.Default()
 }

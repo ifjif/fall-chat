@@ -39,4 +39,5 @@ func init() {
 
 func Init(db *gorm.DB) {
 	initSnowFlake(db)
+	initLogger()
 }
