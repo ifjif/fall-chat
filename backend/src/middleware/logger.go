@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"errors"
 	"time"
 	"zzc/fall-chat/src/ctxkey"
+	"zzc/fall-chat/src/errs"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -17,19 +19,23 @@ func LoggerMiddleware(c fiber.Ctx) error {
 
 	reqLogger := ctxkey.GetLogger(c)
 
+	commonFields := []any{
+		"method", c.Method(),
+		"path", c.Path(),
+		"status", status,
+		"latency", latency.String(),
+	}
+
 	if err != nil {
-		reqLogger.Error(logMsg, "method", c.Method(),
-			"path", c.Path(),
-			"status", status,
-			"latency", latency.String(),
-			"error", err,
-		)
+		commonFields = append(commonFields, "error", err.Error())
+		// 携带上下文
+		var appErr *errs.AppError
+		if errors.As(err, &appErr) {
+			commonFields = append(commonFields, appErr.ExtractContext()...)
+		}
+		reqLogger.Error(logMsg, commonFields...)
 	} else {
-		reqLogger.Info(logMsg, "method", c.Method(),
-			"path", c.Path(),
-			"status", status,
-			"latency", latency.String(),
-		)
+		reqLogger.Info(logMsg, commonFields...)
 	}
 
 	return err

@@ -44,7 +44,7 @@ func (gic *GroupInfoController) createGroup(c fiber.Ctx) error {
 
 	req, err := bind.Body[request.CreateGroupRequest](c)
 	if err != nil {
-		return gic.LogWarn("createGroup body绑定失败", err,
+		return gic.Wrap("body绑定", err,
 			"username", username,
 		)
 	}
@@ -55,7 +55,7 @@ func (gic *GroupInfoController) createGroup(c fiber.Ctx) error {
 
 	err = gic.groupService.CreateGroup(cmd)
 	if err != nil {
-		return gic.LogWarn("createGroup", err)
+		return err
 	}
 
 	return resp.
@@ -71,7 +71,7 @@ func (gic *GroupInfoController) groups(c fiber.Ctx) error {
 
 	req, err := bind.Body[request.GroupInfoGroupsRequest](c)
 	if err != nil {
-		return gic.LogWarn("groups body bind faild.", err, "username", username)
+		return gic.Wrap("body bind", err, "username", username)
 	}
 
 	qu := converter.ToGroupInfoGroupsQuery(req)
@@ -80,7 +80,7 @@ func (gic *GroupInfoController) groups(c fiber.Ctx) error {
 
 	result, err := gic.groupService.Groups(qu)
 	if err != nil {
-		return gic.LogWarn("groups", err)
+		return err
 	}
 
 	return resp.

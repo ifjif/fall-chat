@@ -11,3 +11,6 @@ const (
 	// 请求logger key
 	ContextKeyLogger = "slog_logger"
 )
+
+// 防止冲突
+type loggerKey struct{}

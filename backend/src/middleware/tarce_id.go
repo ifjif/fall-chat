@@ -18,7 +18,8 @@ func TraceIDMiddleware(c fiber.Ctx) error {
 
 	// 创建一个绑定了 trace-id的 logger
 	reqLogger := slog.With("trace_id", traceID)
-	ctxkey.SetLogger(c, reqLogger)
+	ctx := ctxkey.SetLogger(c.Context(), reqLogger)
+	c.SetContext(ctx)
 	// 将 Trace-ID 写入响应头，方便前端或调用方排查问题
 	c.Set("X-Trace-ID", traceID)
 	return c.Next()

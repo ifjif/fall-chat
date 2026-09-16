@@ -1,8 +1,8 @@
 package service
 
 import (
-	"fmt"
 	"zzc/fall-chat/src/database"
+	"zzc/fall-chat/src/errs"
 	"zzc/fall-chat/src/utils"
 
 	"gorm.io/gorm"
@@ -25,12 +25,6 @@ func (bs *BaseService) Inject() {
 	bs.db = database.DB
 }
 
-func (bs *BaseService) LogWarn(op string, err error, fields ...any) error {
-	return fmt.Errorf("%s.%s failed: %w | Context: %v", bs.name, op, err, fields)
-	// utils.LogWarn("[%s] %s failed: %v | Context: %v", bs.name, op, err, fields)
-}
-
-func (bs *BaseService) LogError(op string, err error, fields ...any) error {
-	return fmt.Errorf("%s.%s failed: %w | Context: %v", bs.name, op, err, fields)
-	// utils.LogError("[%s] %s failed: %v | Context: %v", bs.name, op, err, fields)
+func (bs *BaseService) Wrap(op string, err error, fields ...any) error {
+	return errs.Wrap(op, err, fields...)
 }

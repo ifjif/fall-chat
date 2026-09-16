@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 	"zzc/fall-chat/src/converter"
 	"zzc/fall-chat/src/data"
@@ -41,7 +40,7 @@ func (cs *ConversationService) List(id int64, name string) ([]*response.IMConver
 	var result []*response.IMConversationResponse
 	rows, err := cs.dao.ListByUserID(id)
 	if err != nil {
-		return nil, cs.LogWarn("List", err, "username", name, "reason", "找用户会话列表失败")
+		return nil, cs.Wrap("找用户会话列表", err, "id", id, "username", name)
 	}
 
 	for i := range rows {
@@ -56,13 +55,12 @@ func (cs *ConversationService) List(id int64, name string) ([]*response.IMConver
 func (cs *ConversationService) Single(qu *query.ConvSingleQuery) (*response.IMConversationResponse, error) {
 	convID, err := cs.sf.Decode(qu.ConvID)
 	if err != nil {
-		return nil, cs.LogWarn("Single", err, "id", qu.ID, "reason", "会话id解码失败")
+		return nil, cs.Wrap("会话id解码", err, "id", qu.ID)
 	}
 
 	row, err := cs.dao.SingleByConvID(convID, qu.ID)
 	if err != nil {
-		return nil, cs.LogWarn("Single", err, "id", qu.ID, "conv_id", convID,
-			"reason", "找用户的单条会话失败")
+		return nil, cs.Wrap("找用户的单条会话", err, "id", qu.ID, "conv_id", convID)
 	}
 
 	// 没有会话
@@ -79,9 +77,8 @@ func (cs *ConversationService) UpdateConversationHandler(ctx context.Context, ms
 	var updateMess mess.UpdateConvMess
 	err := json.Unmarshal(msg.Value, &updateMess)
 	if err != nil {
-		return cs.LogWarn("UpdateConversationHandler", err, "reason", "json unmarshal kafka消息失败")
+		return cs.Wrap("json unmarshal kafka消息", err)
 	}
-	fmt.Printf("收到kafka消息：%v\n", updateMess)
 
 	task := job.NewUpdateConversaionJob(cs.db)
 	task.ConvID = updateMess.ConvID

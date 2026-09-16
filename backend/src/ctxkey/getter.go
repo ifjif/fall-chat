@@ -1,6 +1,7 @@
 package ctxkey
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/gofiber/fiber/v3"
@@ -37,9 +38,15 @@ func GetUsername(c fiber.Ctx) string {
 	return v
 }
 
-func GetLogger(c fiber.Ctx) *slog.Logger {
-	if v := c.Locals(ContextKeyLogger); v != nil {
-		return v.(*slog.Logger)
+func GetLogger(ctx context.Context) *slog.Logger {
+	var l *slog.Logger
+
+	if ctx != nil {
+		l, _ = ctx.Value(loggerKey{}).(*slog.Logger)
+	}
+
+	if l != nil {
+		return l
 	}
 
 	// 没有，返回默认

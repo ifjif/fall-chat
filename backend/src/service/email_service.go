@@ -29,10 +29,7 @@ func (es *EmailService) PassResetCode(email string) (id string, err error) {
 
 	id_, err_ := es.sf.NextID()
 	if err_ != nil {
-		return id, es.LogWarn("PassResetCode", err_,
-			"email", email,
-			"reason", "生成ID失败",
-		)
+		return id, es.Wrap("生成ID", err_, "email", email)
 	}
 
 	pID := utils.SF.Encode(id_)
@@ -44,10 +41,7 @@ func (es *EmailService) PassResetCode(email string) (id string, err error) {
 
 	result := es.db.Create(prc)
 	if result.Error != nil {
-		return id, es.LogWarn("PassResetCode", result.Error,
-			"username", es.name,
-			"reason", "插入重置密码验证码记录失败",
-		)
+		return id, es.Wrap("插入重置密码验证码记录", result.Error, "username", es.name)
 	}
 
 	go func() {
@@ -61,35 +55,24 @@ func (es *EmailService) PassResetCode(email string) (id string, err error) {
 func (es *EmailService) VerifyPasswordRestCode(codeID, code string) error {
 	id, err := es.sf.Decode(codeID)
 	if err != nil {
-		return es.LogWarn("VerifyPasswordRestCode", err,
-			"code_id", codeID,
-			"reason", "codeID解码失败",
-		)
+		return es.Wrap("codeID解码", err, "code_id", codeID)
 	}
 
 	var prc model.PasswordRestCode
 	result := es.db.Where("id = ?", id).Take(&prc)
 
 	if result.Error != nil {
-		return es.LogWarn("VerifyPasswordRestCode", err,
-			"code_id", codeID,
-			"reason", "获取重置密码验证码失败",
-		)
+		return es.Wrap("获取重置密码验证码", err, "code_id", codeID)
 	}
 
 	if prc.Used || prc.Code != code || time.Now().After(prc.ExpireAt) {
-		return es.LogWarn("VerifyPasswordRestCode", errs.EmailErrInvalid,
-			"code_id", codeID,
-		)
+		return es.Wrap("验证码验证", errs.EmailErrInvalid, "code_id", codeID)
 	}
 
 	// 设置为使用
 	result = es.db.Model(&prc).Update("used", true)
 	if result.Error != nil {
-		return es.LogWarn("VerifyPasswordRestCode", result.Error,
-			"code_id", codeID,
-			"reason", "更新使用状态失败",
-		)
+		return es.Wrap("更新使用状态", result.Error, "code_id", codeID)
 	}
 
 	return nil

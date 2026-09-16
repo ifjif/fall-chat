@@ -41,6 +41,7 @@ func GenerateConvMember(convID, userID, peerID int64, peerAvatar, peerNickname s
 	return &IMConversationMember{
 		ConvID:       convID,
 		UserID:       userID,
+		PeerID:       peerID,
 		PeerAvatar:   peerAvatar,
 		PeerNickname: peerNickname,
 	}

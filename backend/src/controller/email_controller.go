@@ -34,12 +34,12 @@ func (ec *EmailController) SetRoute(r fiber.Router) {
 func (ec *EmailController) passResetCode(c fiber.Ctx) error {
 	req, err := bind.Body[request.PassResetCodeRequest](c)
 	if err != nil {
-		return ec.LogWarn("passResetCode Body绑定失败", err)
+		return ec.Wrap("Body绑定", err)
 	}
 
 	id, err := ec.emailService.PassResetCode(req.Email)
 	if err != nil {
-		return ec.LogWarn("passResetCode", err)
+		return err
 	}
 
 	return resp.

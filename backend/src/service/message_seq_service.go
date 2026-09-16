@@ -24,8 +24,7 @@ func (mss *MessageSeqService) Inject() {
 func (mss *MessageSeqService) NextSeq(convID int64) (int64, error) {
 	v, err := mss.dao.GenerateNextSeq(convID)
 	if err != nil {
-		return 0, mss.LogWarn("NextSeq", err, "convID", convID,
-			"reason", "得到当前会话消息的下一个seq失败")
+		return 0, mss.Wrap("得到当前会话消息的下一个seq", err, "convID", convID)
 	}
 
 	return v, nil

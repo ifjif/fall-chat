@@ -36,7 +36,7 @@ func (ac *AuthController) refresh(c fiber.Ctx) error {
 			Err(fiber.StatusUnauthorized).
 			Message("refresh token不存在，请重新登录").
 			Failure()
-		return ac.LogWarn("refresh", err)
+		return ac.Wrap("refresh", err)
 	}
 
 	claims, err := utils.ParseJWT(refreshToken)
@@ -46,11 +46,11 @@ func (ac *AuthController) refresh(c fiber.Ctx) error {
 			Err(fiber.StatusUnauthorized).
 			Message("refresh凭证错误").
 			Failure().Meger(err)
-		return ac.LogWarn("refresh", err, "reason", "refresh token解析失败")
+		return ac.Wrap("refresh", err, "reason", "refresh token解析失败")
 	}
 
 	if claims.Type != utils.TOKEN_REFRESH_TYPE {
-		return ac.LogWarn("refresh", errs.CommonErrJWTTokenType,
+		return ac.Wrap("refresh", errs.CommonErrJWTTokenType,
 			"username", claims.Username,
 		)
 	}
@@ -58,7 +58,7 @@ func (ac *AuthController) refresh(c fiber.Ctx) error {
 	// 生成新 access token
 	accessToken, expiresIn, err := utils.GenerateAccessToken(claims.UserID, claims.Username, claims.DeviceID)
 	if err != nil {
-		return ac.LogWarn("refresh", err,
+		return ac.Wrap("refresh", err,
 			"username", claims.Username,
 			"reason", "生成access token失败",
 		)

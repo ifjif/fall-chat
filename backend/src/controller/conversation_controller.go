@@ -45,7 +45,7 @@ func (cc *ConversationController) list(c fiber.Ctx) error {
 
 	result, err := cc.conversationService.List(id, username)
 	if err != nil {
-		return cc.LogWarn("list", err)
+		return err
 	}
 
 	return resp.
@@ -60,7 +60,7 @@ func (cc *ConversationController) single(c fiber.Ctx) error {
 
 	req, err := bind.Query[request.ConvSingleRequest](c)
 	if err != nil {
-		return cc.LogWarn("single query bind faild.", err, "id", id)
+		return cc.Wrap("query bind faild.", err, "id", id)
 	}
 
 	qu := converter.ToConvSingleQuery(req)
@@ -69,7 +69,7 @@ func (cc *ConversationController) single(c fiber.Ctx) error {
 
 	result, err := cc.conversationService.Single(qu)
 	if err != nil {
-		return cc.LogWarn("single", err)
+		return err
 	}
 
 	return resp.

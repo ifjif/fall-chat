@@ -45,7 +45,7 @@ func (cmc *ConversationMemberController) listBrief4Conv(c fiber.Ctx) error {
 
 	req, err := bind.Query[request.ConvMembListBrief4ConvRequest](c)
 	if err != nil {
-		return cmc.LogWarn("listBrief4Conv query bind faild.", err, "id", id)
+		return cmc.Wrap("query bind faild.", err, "id", id)
 	}
 
 	qu := converter.ToConvMembListBrief4ConvQuery(req)
@@ -54,7 +54,7 @@ func (cmc *ConversationMemberController) listBrief4Conv(c fiber.Ctx) error {
 
 	result, err := cmc.convMembService.ListBrief4Conv(qu)
 	if err != nil {
-		return cmc.LogWarn("listBrief4Conv", err, "id", id)
+		return err
 	}
 
 	return resp.
@@ -69,7 +69,7 @@ func (cmc *ConversationMemberController) listBriefBatch(c fiber.Ctx) error {
 
 	req, err := bind.Body[request.ConvMembListBriefBatchRequest](c)
 	if err != nil {
-		return cmc.LogWarn("listBriefBatch body bind faild.", err, "id", id)
+		return cmc.Wrap("body bind faild.", err, "id", id)
 	}
 
 	qu := converter.ToConvMembListBriefBatchQuery(req)
@@ -78,7 +78,7 @@ func (cmc *ConversationMemberController) listBriefBatch(c fiber.Ctx) error {
 
 	result, err := cmc.convMembService.ListBriefBatch(qu)
 	if err != nil {
-		return cmc.LogWarn("listBriefBatch", err, "id", id)
+		return err
 	}
 
 	return resp.

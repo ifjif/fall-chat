@@ -330,7 +330,6 @@ export const useConversationStore = defineStore('conversation', () => {
 
   // 消息回复处理
   async function handleReplyMsg(data) {
-    // 先临时
     const msg = {
       id: data.last_msg_id,
       msg_type: 0,

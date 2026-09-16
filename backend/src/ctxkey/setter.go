@@ -1,6 +1,10 @@
 package ctxkey
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"context"
+
+	"github.com/gofiber/fiber/v3"
+)
 
 // 为Locals 设置 UserID值 通常为 int64/string
 func SetUserID(c fiber.Ctx, v any) {
@@ -16,6 +20,6 @@ func SetUsername(c fiber.Ctx, v any) {
 	c.Locals(Username, v)
 }
 
-func SetLogger(c fiber.Ctx, v any) {
-	c.Locals(ContextKeyLogger, v)
+func SetLogger(c context.Context, v any) context.Context {
+	return context.WithValue(c, loggerKey{}, v)
 }
