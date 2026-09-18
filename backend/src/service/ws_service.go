@@ -79,12 +79,14 @@ func (c *Client) SendMesage(msg []byte) {
 
 type Hub struct {
 	clients map[string]*Client
-	mu      sync.Mutex
+	groups  map[string]map[string]bool
+	mu      sync.RWMutex
 }
 
 func NewHub() *Hub {
 	return &Hub{
 		clients: make(map[string]*Client),
+		groups:  make(map[string]map[string]bool),
 	}
 }
 
@@ -99,17 +101,47 @@ func (h *Hub) AddClient(ctx context.Context, id string, conn *websocket.Conn) *C
 	return client
 }
 
+func (h *Hub) AddGroups(id string, groupIds []string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	for _, groupId := range groupIds {
+		if h.groups[groupId] == nil {
+			h.groups[groupId] = make(map[string]bool)
+		}
+		h.groups[groupId][id] = true
+	}
+}
+
 func (h *Hub) RemoveClient(id string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.clients, id)
+	h.removeGroup(id)
+}
+
+func (h *Hub) removeGroup(id string) {
+	for gID, group := range h.groups {
+		delete(group, id)
+
+		if len(group) == 0 {
+			delete(h.groups, gID)
+		}
+	}
 }
 
 func (h *Hub) GetClient(id string) (*Client, bool) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	client, exists := h.clients[id]
 	return client, exists
+}
+
+func (h *Hub) GetGroup(id string) (map[string]bool, bool) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	group, exists := h.groups[id]
+	return group, exists
 }
 
 type WsService struct {
@@ -132,6 +164,10 @@ func (ws *WsService) Inject() {
 	ws.dao = data.NewWSDao(ws.db)
 	mss := GlobalService[MESSAGE_SEQ_SERVICE_NAME].(*MessageSeqService)
 	ws.messageSeqService = mss
+
+	messageGroup := messagequeue.GetDispatcher().GetOrCreateGroup("join-group", "join-group-group")
+	messageGroup.RegisterHandler(ws.joinGroupHandler)
+	messageGroup.StartInstance()
 }
 
 func (ws *WsService) Remove(id string) {
@@ -156,31 +192,58 @@ func (ws *WsService) SendMessage(ctx context.Context, id string, msg response.WS
 	client.SendMesage(data)
 }
 
-func (ws *WsService) Add(ctx context.Context, id string, conn *websocket.Conn) *Client {
-	return ws.hub.AddClient(ctx, id, conn)
+func (ws *WsService) SendGroupMessage(ctx context.Context, senderID, groupID string, msg response.WSMessage) {
+	logger := ctxkey.GetLogger(ctx)
+	group, ok := ws.hub.GetGroup(groupID)
+	if !ok {
+		logger.Info("websocket", "op", "发送群消息", "reason", "群不存在，消息丢弃")
+		return
+	}
+	// 除发送者外的所有
+	for k := range group {
+		if k != senderID {
+			ws.SendMessage(ctx, k, msg)
+		}
+	}
 }
 
-/*
-*
+func (ws *WsService) Add(ctx context.Context, id string, conn *websocket.Conn) (*Client, error) {
+	client := ws.hub.AddClient(ctx, id, conn)
 
-	type ChatData struct {
-		From    string `json:"from"` // 发送者id
-		To      string `json:"to"`   // 接收者id
-		Conv    string `json:"conv"` // 会话id
-		Content string `json:"content"`
-		Type int			 `json:"type"` // 0:单聊 1:群
+	// 找用户加入的群
+	groupIds, err := ws.fetchGroupConvIDs(id)
+	if err != nil {
+		return nil, err
 	}
 
-*
-*/
+	if len(groupIds) != 0 {
+		ws.hub.AddGroups(id, groupIds)
+	}
+
+	return client, err
+}
+
+//	type ChatData struct {
+//		From        string `json:"from"` // 发送者id
+//		To          string `json:"to"`   // 接收者id
+//		Conv        string `json:"conv"` // 会话id
+//		Content     string `json:"content"`
+//		ConvType    int    `json:"conv_type"`     // 会话类型 0:单 1:群
+//		MsgType     int    `json:"msg_type"`      // 消息类型 1:文本 2:图片 3:语言 4:视频
+//		ClientMsgID string `json:"client_msg_id"` // 本地的临时id
+//	}
 func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatData) error {
 	id := client.ID
 	if id != chatData.From {
 		return ws.Wrap("", errs.ErrWSClientIDSenderIDNotMatch, "from", chatData.From)
 	}
 
-	if chatData.Type != 0 && chatData.Type != 1 {
-		return ws.Wrap("", errs.ErrWSChatConvType, "conversation_type", chatData.Type)
+	temConv := model.IMConversation{ConvType: int8(chatData.ConvType)}
+	if !temConv.IsInvalidConvType() {
+		return ws.Wrap("", errs.ErrWSChatConvType, "conversation_type", chatData.ConvType)
+	}
+	if !model.IsInvalidIMMsgType(chatData.MsgType) {
+		return ws.Wrap("", errs.ErrWSChatMessageType, "message_type", chatData.MsgType)
 	}
 
 	rawID, err := ws.sf.Decode(id)
@@ -196,6 +259,9 @@ func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatDat
 		minID, maxID = maxID, minID
 	}
 	singleKey := fmt.Sprintf("%d:%d", minID, maxID)
+	if temConv.IsGroupConType() {
+		singleKey = chatData.To
+	}
 
 	// 找会话
 	conv, err := ws.dao.FindConversationBySingleKey(singleKey)
@@ -204,6 +270,10 @@ func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatDat
 	}
 
 	if conv == nil {
+		// INFO:群类型，不存在报错
+		if temConv.IsGroupConType() {
+			return ws.Wrap("", errs.ErrWSChatConvGroupNotExists, "single_key", singleKey)
+		}
 		conv, err = ws.createConversation(rawID, rawToID, singleKey, chatData)
 		if err != nil {
 			return ws.Wrap("创建用户会话", err, "to", chatData.To)
@@ -220,7 +290,7 @@ func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatDat
 		SenderID: rawID,
 		Content:  chatData.Content,
 		SendTime: time.Now(), // TODO:
-		MsgType:  0,          // TODO:
+		MsgType:  int8(chatData.MsgType),
 		Seq:      newSeq,
 	}
 	err = utils.InjectID4Model(ws.sf, &lastMessage.Model)
@@ -247,8 +317,7 @@ func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatDat
 	ucMess.Seq = lastMessage.Seq
 	messData, err := json.Marshal(ucMess)
 	if err != nil {
-		// TODO: 发送错误
-		return err
+		return ws.Wrap("json.Marshal 更新会话消息数据", err)
 	}
 	go messagequeue.KWriter().WriteMessages(context.Background(), kafka.Message{
 		Topic: "update-conv-member",
@@ -278,7 +347,7 @@ func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatDat
 	ws.SendMessage(client.ctx, id, msg)
 
 	// 给对方发送
-	msg2 := response.WSMessage{
+	replyMsg := response.WSMessage{
 		Type:      "chat_reply",
 		Timestamp: time.Now().UnixMilli(),
 		Data: response.ChatReply{
@@ -290,15 +359,21 @@ func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatDat
 			MsgSeq:   lastMessage.Seq,
 		},
 	}
-	ws.SendMessage(client.ctx, chatData.To, msg2)
+
+	if temConv.IsGroupConType() {
+		ws.SendGroupMessage(client.ctx, chatData.From, chatData.To, replyMsg)
+	} else {
+		ws.SendMessage(client.ctx, chatData.To, replyMsg)
+	}
 
 	return nil
 }
 
+// 单聊的首次会话创建
 func (ws *WsService) createConversation(id int64, toID int64, singleKey string, message *request.ChatData) (*model.IMConversation, error) {
 	conv := &model.IMConversation{
 		SingleKey: singleKey,
-		ConvType:  int8(message.Type),
+		ConvType:  int8(message.ConvType),
 	}
 	err := utils.InjectID4Model(ws.sf, &conv.Model)
 	if err != nil {
@@ -327,14 +402,7 @@ func (ws *WsService) createConversation(id int64, toID int64, singleKey string, 
 	}
 
 	// 发送者
-	ma := &model.IMConversationMember{
-		ConvID:       int64(conv.ID),
-		UserID:       id,
-		PeerID:       toID,
-		PeerAvatar:   receiverProfile.Avatar,
-		PeerNickname: receiverProfile.Nickname,
-	}
-
+	ma := model.GenerateConvMember(int64(conv.ID), id, toID)
 	err = utils.InjectID4Model(ws.sf, &ma.Model)
 	if err != nil {
 		return nil, ws.Wrap("生成发送者成员id", err)
@@ -342,13 +410,7 @@ func (ws *WsService) createConversation(id int64, toID int64, singleKey string, 
 	members = append(members, ma)
 
 	// 接收者
-	mb := &model.IMConversationMember{
-		ConvID:       int64(conv.ID),
-		UserID:       toID,
-		PeerID:       id,
-		PeerAvatar:   senderUserProfile.Avatar,
-		PeerNickname: senderUserProfile.Nickname,
-	}
+	mb := model.GenerateConvMember(int64(conv.ID), toID, id)
 	err = utils.InjectID4Model(ws.sf, &mb.Model)
 	if err != nil {
 		return nil, ws.Wrap("生成接收者成员id", err, "to", message.To)
@@ -387,4 +449,29 @@ func (ws *WsService) createConversation(id int64, toID int64, singleKey string, 
 	}
 
 	return conv, nil
+}
+
+func (ws *WsService) fetchGroupConvIDs(id string) ([]string, error) {
+	rawID, err := ws.sf.Decode(id)
+	if err != nil {
+		return nil, ws.Wrap("连接id解码失败", err)
+	}
+
+	groupIDs, err := ws.dao.FindGroupConvIDsByUserID(rawID)
+	if err != nil {
+		return nil, ws.Wrap("找会话组id", err)
+	}
+
+	return groupIDs, nil
+}
+
+func (ws *WsService) joinGroupHandler(ctx context.Context, message *kafka.Message, commitFunc func()) error {
+	var msg *mess.JoinGroupMess
+	err := json.Unmarshal(message.Value, msg)
+	if err != nil {
+		// TODO: 记录错误
+		return err
+	}
+	utils.LogInfo("收到加入群消息：%v\n", msg)
+	return nil
 }

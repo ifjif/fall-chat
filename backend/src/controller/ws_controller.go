@@ -100,7 +100,11 @@ func (wsc *WSController) websocketHandler() func(fiber.Ctx) error {
 		defer cancel()
 		clientCtx := ctxkey.SetLogger(ctx, logger.With("id", id))
 
-		client := wsc.wsService.Add(clientCtx, id, c)
+		client, err := wsc.wsService.Add(clientCtx, id, c)
+		if err != nil {
+			logger.Error("websocket", "reason", "添加websocket client失败", "id", id, "error", err)
+			return
+		}
 		defer wsc.wsService.Remove(id)
 
 		for {
@@ -140,12 +144,13 @@ func (wsc *WSController) dispatchMessage(client *service.Client, message *reques
 }
 
 func (wsc *WSController) unmatchHandler(client *service.Client, message *request.WSMessage) {
-	wsc.errorHandler(client, "unmatch", errs.ErrWSNotFound)
+	wsc.errorHandler(client, "unmatch", &response.WSErr{Error: errs.ErrWSNotFound})
 }
 
-func (wsc *WSController) errorHandler(client *service.Client, ty string, err error) {
+func (wsc *WSController) errorHandler(client *service.Client, ty string, data *response.WSErr) {
 	// 错误的类型
 	errType := ty + "_error"
+	err := data.Error
 
 	var appErr *errs.AppError
 	if errors.As(err, &appErr) {
@@ -156,12 +161,13 @@ func (wsc *WSController) errorHandler(client *service.Client, ty string, err err
 	respErr := response.WSMessage{
 		Type:      errType,
 		Timestamp: time.Now().UnixMilli(),
+		Data:      data,
 	}
 
-	if _, ok := err.(*errs.WSError); ok {
-		respErr.Data = err
-	} else {
-		respErr.Data = errs.ErrWSInternal
+	data.Error = errs.ErrWSInternal
+	var wsErr *errs.WSError
+	if errors.As(err, &wsErr) {
+		data.Error = wsErr
 	}
 
 	wsc.wsService.SendMessage(client.GetContext(), client.ID, respErr)
@@ -172,12 +178,19 @@ func (wsc *WSController) chatMessageHandler(client *service.Client, message *req
 	err := json.Unmarshal(message.Data, &chatData)
 	if err != nil {
 		err = wsc.Wrap("json消息反序列化", err, "reason", "")
-		wsc.errorHandler(client, message.Type, err)
+		wsc.errorHandler(client, message.Type, &response.WSErr{Error: err})
 		return
 	}
 
 	err = wsc.wsService.HandleChatMessage(client, &chatData)
 	if err != nil {
-		wsc.errorHandler(client, message.Type, err)
+		errResp := response.WSErr{
+			Error: err,
+			Data: response.ChatErrData{
+				ConvID: chatData.Conv,
+				MsgID:  chatData.ClientMsgID,
+			},
+		}
+		wsc.errorHandler(client, message.Type, &errResp)
 	}
 }

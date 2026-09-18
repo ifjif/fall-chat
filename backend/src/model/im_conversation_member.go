@@ -10,8 +10,6 @@ package model
 * conv_id bigint // 会话id
 * user_id bigint // 用户id
 * peer_id bigint // 对方id
-* peer_avatar varchar(255) // 冗余的对方头像
-* peer_nickname varchar(255) // 冗余的对方用户名
 *
 * unread_count int // 用户的未读数
 * top_flag tinyint // 是否置顶：0-否 1-是
@@ -26,23 +24,19 @@ package model
 
 type IMConversationMember struct {
 	Model
-	ConvID        int64  `gorm:"column:conv_id;uniqueIndex:idx_conv_user_peer_id_uk"`
-	UserID        int64  `gorm:"column:user_id;uniqueIndex:idx_conv_user_peer_id_uk;index:idx_user_peer_id"`
-	PeerID        int64  `gorm:"column:peer_id;index:idx_user_peer_id"`
-	PeerAvatar    string `gorm:"column:peer_avatar;size:255"`
-	PeerNickname  string `gorm:"column:peer_nickname;size:255"`
-	LastReadSeq   int64  `gorm:"column:last_read_seq"`
-	TopFlag       int8   `gorm:"column:top_flag"`
-	MuteFlag      int8   `gorm:"column:mute_flag"`
-	LastReadMsgID int64  `gorm:"column:last_read_msg_id"`
+	ConvID        int64 `gorm:"column:conv_id;uniqueIndex:idx_conv_user_peer_id_uk"`
+	UserID        int64 `gorm:"column:user_id;uniqueIndex:idx_conv_user_peer_id_uk;index:idx_user_peer_id"`
+	PeerID        int64 `gorm:"column:peer_id;index:idx_user_peer_id"`
+	LastReadSeq   int64 `gorm:"column:last_read_seq"`
+	TopFlag       int8  `gorm:"column:top_flag"`
+	MuteFlag      int8  `gorm:"column:mute_flag"`
+	LastReadMsgID int64 `gorm:"column:last_read_msg_id"`
 }
 
-func GenerateConvMember(convID, userID, peerID int64, peerAvatar, peerNickname string) *IMConversationMember {
+func GenerateConvMember(convID, userID, peerID int64) *IMConversationMember {
 	return &IMConversationMember{
-		ConvID:       convID,
-		UserID:       userID,
-		PeerID:       peerID,
-		PeerAvatar:   peerAvatar,
-		PeerNickname: peerNickname,
+		ConvID: convID,
+		UserID: userID,
+		PeerID: peerID,
 	}
 }

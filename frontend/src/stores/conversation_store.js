@@ -1,4 +1,4 @@
-import { convSingleApi } from "@/api/conversation"
+import { convListApi, convSingleApi } from "@/api/conversation"
 import { FindConvMembBriefJob } from "@/job/find_conv_memb_brief_job"
 import { delayTaskMananger } from "@/utils/task_manager"
 import { defineStore } from "pinia"
@@ -27,6 +27,7 @@ export const useConversationStore = defineStore('conversation', () => {
   //        {
   //          id: 
   //          msg_type: 
+  //          conv_type:
   //          content: 
   //          send_time: 
   //          sender_id: 
@@ -34,6 +35,8 @@ export const useConversationStore = defineStore('conversation', () => {
   //          status: 
   //          sender_name:
   //          sender_avatar:
+  //          conv_id:
+  //          peer_id;
   //        }
   //      ]
   //
@@ -60,6 +63,14 @@ export const useConversationStore = defineStore('conversation', () => {
     const callback = events[eventName]
     if (callback) {
       callback()
+    }
+  }
+
+  // 从运程拉取用户所有会话
+  async function pullConversation() {
+    const result = await convListApi()
+    if (result) {
+      conversations.value = result
     }
   }
 
@@ -379,16 +390,85 @@ export const useConversationStore = defineStore('conversation', () => {
     }
   }
 
+  //  处理错误
+  //  data = {
+  //    conv_id: 
+  //    msg_id: 
+  //    timestamp: 
+  //  }
+  function handleChatError(data) {
+    let conv
+    let index = findConversationByTemp(data.conv_id)
+    if (index !== -1) {
+      conv = tempConversations.value[index]
+    } else {
+      index = findConversation(data.conv_id)
+    }
+
+    if (!conv && index !== -1) {
+      conv = conversations.value[index]
+    }
+
+    const msg_index = conv.messages.findIndex(m => m.id === data.msg_id)
+    if (msg_index === -1) return
+    const targetMessage = conv.messages[msg_index]
+
+    updateMessageIdAndStatus(targetMessage, {
+      last_msg_id: data.msg_id,
+      last_msg_send_time: data.timestamp,
+      status: 'error'
+    })
+
+  }
+
+
+  // data{
+  //  from
+  //  to
+  //  conv
+  //  content,
+  //  conv_type
+  //  msg_type
+  // }
+  function generateMsg(data) {
+    // 生成一个全局唯一的临时 ID
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    data.client_msg_id = tempId
+
+    const timestamp = Date.now()
+    const localMessage = {
+      id: tempId,
+      msg_type: data.msg_type,
+      content: data.content,
+      send_time: timestamp,
+      sender_id: data.from,
+      status: 'sending',
+      conv_type: data.conv_type,
+      conv_id: data.conv,
+      peer_id: data.to
+    }
+
+    addConversationMsg(data.conv, localMessage)
+
+    return {
+      type: 'chat',
+      timestamp,
+      data
+    }
+  }
+
   return {
     conversations,
     tempConversations,
     on,
     todoConcat,
+    pullConversation,
     setActiveConv,
     getActiveConv,
     getActiveConvType,
     updateConvLastMsg4ACK,
-    addConversationMsg,
+    generateMsg,
     handleReplyMsg,
+    handleChatError,
   }
 })

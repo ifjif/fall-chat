@@ -1,18 +1,23 @@
 package data
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"zzc/fall-chat/src/database"
 	"zzc/fall-chat/src/model"
 
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 type SocialDao struct {
-	db *gorm.DB
+	BaseDao
 }
 
 func NewSocialDao(db *gorm.DB) *SocialDao {
-	return &SocialDao{db: db}
+	bd := BaseDao{db: db, rdb: database.Redis()}
+	return &SocialDao{BaseDao: bd}
 }
 
 func (dao *SocialDao) SearchFriendships(id int64, targetID int64) ([]model.Friendship, error) {
@@ -237,4 +242,45 @@ func (dao *SocialDao) UpdateGroupRequestStatusWithTx(tx *gorm.DB, updates *model
 
 func (dao *SocialDao) CreateGroupMemberWithTx(tx *gorm.DB, member *model.GroupMember) error {
 	return tx.Create(member).Error
+}
+
+func (dao *SocialDao) CreateGroupConvMemberWithTx(tx *gorm.DB, convMember *model.IMConversationMember) error {
+	return tx.Create(convMember).Error
+}
+
+func (dao *SocialDao) FindGroupConvID(groupID string) (int64, error) {
+	var convID int64
+	err := dao.db.Model(model.IMConversation{}).
+		Where("single_key = ?", groupID).
+		First(&convID).Error
+
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return convID, nil
+	}
+
+	return convID, err
+}
+
+func (dao *SocialDao) SetGroupCache(groupID string, userID int64) {
+	key := fmt.Sprintf("im:user:conv:groupid:%d", userID)
+
+	luaScript := `
+		if redis.call('exists',keys[1]) == 1 then
+			return redis.call('sadd',keys[1],argv[1])
+		else
+			return -1
+		end
+	`
+
+	cmd := dao.rdb.Eval(context.Background(), luaScript, []string{key}, groupID)
+	err := cmd.Err()
+	if err != nil && err != redis.Nil {
+		// WARN: redis 服务错误
+	}
+
+	/*
+		result, _ := cmd.Result()
+		-1表示键不存在
+		0表示设置失败
+	*/
 }

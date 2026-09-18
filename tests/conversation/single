@@ -3,9 +3,9 @@
 url = http://localhost:8080/api/v1/conversation/single
 
 -H "Accept: application/json"
--H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg4ODY4OTUyLCJuYmYiOjE3ODg4NjcxNTIsImlhdCI6MTc4ODg2NzE1Mn0.5Xgby0NQRfZ7jDX-vBZ6SyCl_OR9f9gbGjFDYc8xZJ8"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzg5NTY4NzEwLCJuYmYiOjE3ODk1NjY5MTAsImlhdCI6MTc4OTU2NjkxMH0.holkpdP8MfBpFbvo01xNmX3C51vIL7F-R_4oZj2gV2I"
 
 -G
--d "conv_id=7a895f6ce1cbdbca"
+-d "conv_id=7a810019e88bdbca"
 
 -o single-res.json

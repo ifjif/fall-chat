@@ -22,5 +22,6 @@ var (
 	ErrWSChatConvType             = NewWSError(10001, "会话类型错误")
 	ErrWSChatMessageType          = NewWSError(10002, "消息类型错误")
 	ErrWSChatSenderNotExists      = NewWSError(10003, "消息发送者不存在")
-	ErrWSChatReceiverNotExists    = NewWSError(10003, "消息接受者不存在")
+	ErrWSChatReceiverNotExists    = NewWSError(10004, "消息接受者不存在")
+	ErrWSChatConvGroupNotExists   = NewWSError(10005, "群会话不存在")
 )

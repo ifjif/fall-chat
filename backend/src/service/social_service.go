@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"time"
@@ -9,10 +11,13 @@ import (
 	"zzc/fall-chat/src/data"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
+	"zzc/fall-chat/src/mess"
+	messagequeue "zzc/fall-chat/src/message_queue"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/query"
 	"zzc/fall-chat/src/utils"
 
+	"github.com/segmentio/kafka-go"
 	"gorm.io/gorm"
 )
 
@@ -338,6 +343,17 @@ func (ss *SocialService) HandleGroupRequest(cmd *command.SocialHandleGroupReques
 		return ss.Wrap("", errs.SocialErrGroupMemberRoleOrdinary, "username", cmd.Username)
 	}
 
+	groupID := ss.sf.Encode(requestInfo.ToGroupID)
+
+	// 找群会话
+	convID, err := ss.dao.FindGroupConvID(groupID)
+	if err != nil {
+		return ss.Wrap("找群会话ID", err, "single_key", groupID)
+	}
+	if convID == 0 {
+		return ss.Wrap("", errs.SocialErrGroupConvNotExists, "single_key", groupID)
+	}
+
 	// 修改请求状态，如是同意，添加群成员
 	reason := ""
 	err = ss.db.Transaction(func(tx *gorm.DB) error {
@@ -377,10 +393,37 @@ func (ss *SocialService) HandleGroupRequest(cmd *command.SocialHandleGroupReques
 			return err
 		}
 
+		reason = "生成群会话成员ID失败"
+		convMember := model.GenerateConvMember(convID, member.UserID, member.GroupID)
+		err = utils.InjectID4Model(ss.sf, &convMember.Model)
+		if err != nil {
+			return err
+		}
+
+		reason = "创建群会话成员失败"
+		err = ss.dao.CreateGroupConvMemberWithTx(tx, convMember)
+
 		return nil
 	})
 	if err != nil {
 		return ss.Wrap(reason, err, "username", cmd.Username)
 	}
+
+	// INFO: 缓存设置失败，则无法实时得到群信息，用户需要手动刷新
+	ss.dao.SetGroupCache(groupID, requestInfo.FromUserID)
+
+	userID := ss.sf.Encode(requestInfo.FromUserID)
+
+	v := mess.JoinGroupMess{
+		GroupID: groupID,
+		UserID:  userID,
+	}
+	bv, _ := json.Marshal(v)
+	// TODO: 发送消息队列, join_group
+	messagequeue.KWriter().WriteMessages(context.Background(), kafka.Message{
+		Topic: "join-group",
+		Key:   []byte(groupID),
+		Value: bv,
+	})
 	return nil
 }

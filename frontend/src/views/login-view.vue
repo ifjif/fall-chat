@@ -41,6 +41,7 @@ import { forgetPasswordApi, loginApi, registerApi } from '@/api/user'
 import { passRestCodeApi } from '@/api/email'
 import router from '@/router'
 import { useUserStore } from '@/stores/user_info'
+import { initApp } from '@/initApp'
 const actions = ['登录', '注册', '忘记密码']
 const defaultAction = ref(0)
 const formData = ref({
@@ -92,7 +93,7 @@ const doLogin = async () => {
   try {
     const data = await loginApi(formData.value)
     localStorage.setItem("token", data.access_token)
-    useUserStore().loginSuccess()
+    initApp()
     router.push('/')
   } catch (err) {
   }

@@ -1,1 +1,34 @@
-{"code":2001,"message":"凭证已过期","status":401}
+{
+  "code": 200,
+  "message": "",
+  "data": [
+    {
+      "id": "7a810019e88bdbca",
+      "name": "我是李四",
+      "avatar": "files/80fea4a632bb159ef84be63a4ae25a2d/avatar55.webp",
+      "type": "peer",
+      "peer_id": "7aeabd8c21cbdbca",
+      "last_msg_id": 93832589541904384,
+      "last_msg_preview": "defdfe",
+      "last_msg_sender_id": 81476227113684992,
+      "last_msg_time": "2026-09-16T14:17:12.673Z",
+      "last_msg_seq": 30,
+      "last_read_seq": 30,
+      "unread_count": 0
+    },
+    {
+      "id": "7a810027038bdbc8",
+      "name": "go语言交流群",
+      "avatar": "files/660395aada80ce93a51bfc40bf48f841/5306c1d3gy1h9ymb3ax5sj20zk0koaex.jpg",
+      "type": "group",
+      "peer_id": "7a810027038bdbca",
+      "last_msg_id": 93431404888592384,
+      "last_msg_preview": "fdsfds",
+      "last_msg_sender_id": 81476227113684992,
+      "last_msg_time": "2026-09-15T11:43:02.797Z",
+      "last_msg_seq": 13,
+      "last_read_seq": 13,
+      "unread_count": 0
+    }
+  ]
+}

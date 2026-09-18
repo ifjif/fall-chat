@@ -47,6 +47,10 @@ func (imc *IMConversation) IsGroupConType() bool {
 	return imc.ConvType == 1
 }
 
+func (imc *IMConversation) IsInvalidConvType() bool {
+	return imc.GetConvTypeText() != "unknown"
+}
+
 func (imc *IMConversation) SetLastMessage(lm *IMMessage) {
 	imc.LastMsgID = int64(lm.ID)
 	imc.LastMsgPreview = lm.Content // TODO:根据类型进行设置

@@ -5,31 +5,24 @@ import { useConversationStore } from "./conversation_store";
 
 // status [closed, connected, error]
 export const useWsStore = defineStore('ws', () => {
+  const ws = WebSocketService.getInstance()
   const messages = ref([])
-  let status = 'closed'
 
-  function init() {
-    const ws = WebSocketService.getInstance()
-    ws.on('*', msg => {
-      if (msg.type === 'ping') {
-        return
-      }
+  ws.on('*', msg => {
+    if (msg.type === 'ping') {
+      return
+    }
+  })
 
-      if (msg.type === 'chat_ack') {
-        handleChatAck(msg)
-        return
-      }
-
-      if (msg.type === 'chat_reply') {
-        handleChatReply(msg)
-        return
-      }
-
-      messages.value.push(msg)
-    })
-
-    status = 'connected'
-  }
+  ws.on('chat_ack', msg => {
+    handleChatAck(msg)
+  })
+  ws.on('chat_reply', msg => {
+    handleChatReply(msg)
+  })
+  ws.on('chat_error', msg => {
+    handleChatError(msg)
+  })
 
 
   function handleChatAck(msg) {
@@ -62,32 +55,28 @@ export const useWsStore = defineStore('ws', () => {
     useConversationStore().handleReplyMsg(data)
   }
 
-  function sendMessage(msg) {
-    if (msg.type === 'chat') {
-      // 生成一个全局唯一的临时 ID
-      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      msg.data.client_msg_id = tempId
+  function handleChatError(msg) {
+    const replyData = msg.data
 
-      const localMessage = {
-        id: tempId,
-        msg_type: 0,
-        content: msg.data.content,
-        send_time: msg.timestamp,
-        sender_id: msg.data.from,
-        status: 'sending',
-      }
-
-      useConversationStore().addConversationMsg(msg.data.conv, localMessage)
-
+    const data = {
+      conv_id: replyData.data.conv_id,
+      msg_id: replyData.data.msg_id,
+      timestamp: msg.timestamp
     }
+
+    useConversationStore().handleChatError(data)
+  }
+
+
+  function sendMessage(msg) {
     WebSocketService.getInstance().send(msg)
   }
+
   function clearMessage() {
     messages.value = []
   }
 
   return {
-    init,
     sendMessage,
     clearMessage
   }

@@ -2,17 +2,17 @@
   "code": 200,
   "message": "",
   "data": {
-    "id": "7a895f6ce1cbdbca",
+    "id": "7a810019e88bdbca",
     "name": "我是李四",
     "avatar": "files/80fea4a632bb159ef84be63a4ae25a2d/avatar55.webp",
     "type": "peer",
     "peer_id": "7aeabd8c21cbdbca",
-    "last_msg_id": 90799988350652416,
-    "last_msg_preview": "hello,hello,hello,hello,hello",
+    "last_msg_id": 93826470073339904,
+    "last_msg_preview": "aaaaaaaaaaaaa",
     "last_msg_sender_id": 81476227113684992,
-    "last_msg_time": "2026-09-08T05:26:44.205Z",
-    "last_msg_seq": 2,
-    "last_read_seq": 2,
+    "last_msg_time": "2026-09-16T13:52:53.677Z",
+    "last_msg_seq": 20,
+    "last_read_seq": 20,
     "unread_count": 0
   }
 }

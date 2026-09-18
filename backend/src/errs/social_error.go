@@ -22,4 +22,5 @@ var (
 	SocialErrGroupMemberRoleOrdinary       = NewBizError(4816, fiber.StatusBadRequest, "不是管理员，无法处理")
 	SocialErrGroupMemberOverflow           = NewBizError(4817, fiber.StatusBadRequest, "群成员已满")
 	SocialErrGroupMemberInvitorNotExists   = NewBizError(4818, fiber.StatusBadRequest, "邀请人未加入群，无法处理")
+	SocialErrGroupConvNotExists            = NewBizError(4819, fiber.StatusBadRequest, "群会话不存在")
 )

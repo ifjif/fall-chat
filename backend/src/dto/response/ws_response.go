@@ -6,6 +6,11 @@ type WSMessage struct {
 	Data      any    `json:"data"` // 业务数据
 }
 
+type WSErr struct {
+	Error error `json:"error"`
+	Data  any   `json:"data"`
+}
+
 type ChatACK struct {
 	ConvID      string `json:"conv_id"`
 	To          string `json:"to"`
@@ -21,4 +26,8 @@ type ChatReply struct {
 	SenderID string `json:"sender_id"`
 	Content  string `json:"content"`
 	MsgSeq   int64  `json:"msg_seq"`
+}
+type ChatErrData struct {
+	ConvID string `json:"conv_id"`
+	MsgID  string `json:"msg_id"`
 }

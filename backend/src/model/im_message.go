@@ -31,3 +31,12 @@ type IMMessage struct {
 	SendTime time.Time `gorm:"column:send_time"`
 	Seq      int64     `gorm:"column:seq;index:idx_conv_id_seq;default:0"`
 }
+
+func IsInvalidIMMsgType(msgType int) bool {
+	switch msgType {
+	case 1, 2, 3, 4:
+		return true
+	default:
+		return false
+	}
+}

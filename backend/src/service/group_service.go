@@ -62,7 +62,7 @@ func (gs *GroupService) CreateGroup(cmd *command.CreateGroupCommand) error {
 	}
 
 	// 群会话成员
-	groupConvMember := model.GenerateConvMember(int64(groupConv.ID), cmd.CreatorID, int64(groupInfo.ID), groupInfo.Avatar, groupInfo.GroupName)
+	groupConvMember := model.GenerateConvMember(int64(groupConv.ID), cmd.CreatorID, int64(groupInfo.ID))
 	err = utils.InjectID4Model(gs.sf, &groupConvMember.Model)
 	if err != nil {
 		return gs.Wrap("生成群会话成员ID", err, "username", cmd.Username)

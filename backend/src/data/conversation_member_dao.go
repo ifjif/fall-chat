@@ -60,15 +60,15 @@ func (dao *ConversationMemberDao) ListBriefBatchByConvIDAndMemberIDs(convID int6
 	// 数据库中找到的回写到redis
 	// 最后返回
 
-	// im:mem:nickname:${memberID}
-	// im:mem:avatar:${memberID}
-	// im:mem:ingroupname:${memberID}
+	// im:user:nickname:${memberID}
+	// im:user:avatar:${memberID}
+	// im:user:ingroupname:${memberID}
 	if len(memberIDs) == 0 {
 		return nil, nil
 	}
-	nicknameKeyPrefix := "im:mem:nickname"
-	avatarKeyPrefix := "im:mem:avatar"
-	ingroupnameKeyPrefix := "im:mem:ingroupname"
+	nicknameKeyPrefix := "im:user:nickname"
+	avatarKeyPrefix := "im:user:avatar"
+	ingroupnameKeyPrefix := "im:user:ingroupname"
 
 	keys := make([]string, 0, len(memberIDs)*3)
 

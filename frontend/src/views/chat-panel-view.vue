@@ -50,6 +50,7 @@ const handleResize = ({ clientWidth, clientHeight, scrollWidth, scrollHeight }) 
 }
 
 const handleSend = () => {
+  let msgType = 1
   inputData.value = inputData.value.trim()
   const content = inputData.value
   if (!content) {
@@ -60,9 +61,11 @@ const handleSend = () => {
     to: conv.value.peer_id,
     conv: conv.value.id,
     content,
-    Type: convStore.getActiveConvType()
+    conv_type: convStore.getActiveConvType(),
+    msg_type: msgType
   }
-  wsStore.sendMessage({ type: 'chat', timestamp: Date.now(), data })
+  const msg = convStore.generateMsg(data)
+  wsStore.sendMessage(msg)
   inputData.value = ''
 }
 </script>

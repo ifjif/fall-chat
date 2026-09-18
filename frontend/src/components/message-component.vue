@@ -19,9 +19,14 @@
         <fl-icon v-if="data.status === 'success'" size="20" color="green">
           <FlCheckCircle />
         </fl-icon>
-        <fl-icon v-if="data.status === 'error'" size="20" color="red">
-          <FlCloseCircle />
-        </fl-icon>
+        <fl-popover trigger="hover" :showArrow="false" :padding="4">
+          <template #reference>
+            <fl-icon @click="resend(data)" style="cursor:pointer;" v-if="data.status === 'error'" size="20" color="red">
+              <FlCloseCircle />
+            </fl-icon>
+          </template>
+          重发
+        </fl-popover>
       </div>
 
     </div>
@@ -30,6 +35,10 @@
 <script setup>
 import { FlCheckCircle, FlCloseCircle } from 'fall-ui/icons'
 import Avatar from './avatar.vue';
+import { useWsStore } from '@/stores/ws_store';
+import { useConversationStore } from '@/stores/conversation_store';
+const wsStore = useWsStore()
+const convStore = useConversationStore()
 const props = defineProps({
   self: {
     type: Boolean,
@@ -38,7 +47,20 @@ const props = defineProps({
   data: {
     type: Object
   }
+
 })
+
+const resend = (msg) => {
+  const data = {
+    from: msg.sender_id,
+    to: msg.peer_id,
+    conv: msg.conv_id,
+    content: msg.content,
+    conv_type: msg.conv_type,
+    msg_type: msg.msg_type
+  }
+  wsStore.sendMessage(convStore.generateMsg(data))
+}
 
 </script>
 <style scoped>

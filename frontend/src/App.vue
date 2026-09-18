@@ -7,13 +7,9 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
 import { useWsStore } from './stores/ws_store'
-const wsStore = useWsStore()
+useWsStore()
 
-onMounted(() => {
-  wsStore.init()
-})
 </script>
 
 <style scoped>
