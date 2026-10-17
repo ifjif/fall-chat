@@ -1,4 +1,4 @@
-package job
+package jobs
 
 import (
 	taskmanager "zzc/fall-chat/src/task_manager"
@@ -26,3 +26,5 @@ func (c *CommonJob) ShouldReplace(old taskmanager.Job) bool {
 func (cj *CommonJob) LogWarn(op string, err error, fields ...any) {
 	utils.LogWarn("[Job] %s failed: %v | Context: %v", op, err, fields)
 }
+
+func (cj *CommonJob) OnComplete() {}

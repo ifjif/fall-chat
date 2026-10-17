@@ -4,17 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"sync"
+	"log"
 	"time"
-	"zzc/fall-chat/src/ctxkey"
+	"zzc/fall-chat/src/conns"
 	"zzc/fall-chat/src/data"
 	"zzc/fall-chat/src/dto/request"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
+	"zzc/fall-chat/src/jobs"
+	"zzc/fall-chat/src/keys/ctxkey"
+	rediskey "zzc/fall-chat/src/keys/redis_key"
 	"zzc/fall-chat/src/mess"
 	messagequeue "zzc/fall-chat/src/message_queue"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/pool"
+	"zzc/fall-chat/src/proto/chatpt"
+	taskmanager "zzc/fall-chat/src/task_manager"
 	"zzc/fall-chat/src/utils"
 
 	"github.com/gofiber/contrib/v3/websocket"
@@ -22,131 +27,9 @@ import (
 	"gorm.io/gorm"
 )
 
-type Client struct {
-	ID     string
-	Conn   *websocket.Conn
-	Send   chan []byte // 发送通道，防止并发写
-	logger *slog.Logger
-	ctx    context.Context
-}
-
-func NewClient(ctx context.Context, id string, conn *websocket.Conn) *Client {
-	return &Client{
-		ctx:  ctx,
-		ID:   id,
-		Conn: conn,
-		Send: make(chan []byte, 1024),
-	}
-}
-
-func (c *Client) GetContext() context.Context {
-	return c.ctx
-}
-
-func (c *Client) GetLogger() *slog.Logger {
-	if c.logger == nil {
-		c.logger = ctxkey.GetLogger(c.ctx)
-	}
-	return c.logger
-}
-
-func (c *Client) LogError(err error, fields ...any) {
-	fields = append(fields, "error", err.Error())
-	c.GetLogger().Error("websocket", fields...)
-}
-
-func (c *Client) WritePump() {
-	defer c.Conn.Close()
-
-	for message := range c.Send {
-		// 并发安全的写
-		if err := c.Conn.WriteMessage(websocket.TextMessage, message); err != nil {
-			break
-		}
-	}
-}
-
-func (c *Client) SendMesage(msg []byte) {
-	select {
-	case c.Send <- msg:
-	default:
-		// 通道满，客户端消费慢或断网了
-		utils.LogWarn("客户端 %s 发送缓冲区已满，丢弃消息\n", c.ID)
-		// 踢掉它
-		c.Conn.Close()
-	}
-}
-
-type Hub struct {
-	clients map[string]*Client
-	groups  map[string]map[string]bool
-	mu      sync.RWMutex
-}
-
-func NewHub() *Hub {
-	return &Hub{
-		clients: make(map[string]*Client),
-		groups:  make(map[string]map[string]bool),
-	}
-}
-
-func (h *Hub) AddClient(ctx context.Context, id string, conn *websocket.Conn) *Client {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	client := NewClient(ctx, id, conn)
-	h.clients[id] = client
-	// 启动写通道
-	go client.WritePump()
-
-	return client
-}
-
-func (h *Hub) AddGroups(id string, groupIds []string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	for _, groupId := range groupIds {
-		if h.groups[groupId] == nil {
-			h.groups[groupId] = make(map[string]bool)
-		}
-		h.groups[groupId][id] = true
-	}
-}
-
-func (h *Hub) RemoveClient(id string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	delete(h.clients, id)
-	h.removeGroup(id)
-}
-
-func (h *Hub) removeGroup(id string) {
-	for gID, group := range h.groups {
-		delete(group, id)
-
-		if len(group) == 0 {
-			delete(h.groups, gID)
-		}
-	}
-}
-
-func (h *Hub) GetClient(id string) (*Client, bool) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	client, exists := h.clients[id]
-	return client, exists
-}
-
-func (h *Hub) GetGroup(id string) (map[string]bool, bool) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	group, exists := h.groups[id]
-	return group, exists
-}
-
 type WsService struct {
 	BaseService
-	hub               *Hub
+	hub               *conns.Hub
 	dao               *data.WSDao
 	messageSeqService *MessageSeqService
 }
@@ -160,18 +43,58 @@ func NewWsService(name string) *WsService {
 
 func (ws *WsService) Inject() {
 	ws.BaseService.Inject()
-	ws.hub = NewHub()
+	ws.hub = conns.NewHub()
 	ws.dao = data.NewWSDao(ws.db)
 	mss := GlobalService[MESSAGE_SEQ_SERVICE_NAME].(*MessageSeqService)
 	ws.messageSeqService = mss
 
-	messageGroup := messagequeue.GetDispatcher().GetOrCreateGroup("join-group", "join-group-group")
-	messageGroup.RegisterHandler(ws.joinGroupHandler)
-	messageGroup.StartInstance()
+	joinGroup := messagequeue.GetDispatcher().GetOrCreateGroup("join-group", "join-group-group")
+	joinGroup.RegisterHandler(ws.joinGroupHandler)
+	joinGroup.StartInstance()
+
+	chatGroup := messagequeue.GetDispatcher().GetOrCreateGroup("chat", "chat-group")
+	chatGroup.RegisterHandler(ws.chatHandler)
+	chatGroup.StartInstance()
+}
+
+// 注册grpc 地址
+func (ws *WsService) RegisterGrpcAddr(id string) {
+	ws.dao.AddGrpcAddr2Redis(id)
 }
 
 func (ws *WsService) Remove(id string) {
 	ws.hub.RemoveClient(id)
+	ws.dao.DelGrpcAddr2Redis(id)
+}
+
+// TODO:
+// 向mq发送消息
+// key是会话id
+func (ws *WsService) SendMessageByMQ(reply *response.ChatReply, to string) {
+	replyMsg := response.WSMessage{
+		Type:      "chat_reply",
+		Timestamp: time.Now().UnixMilli(),
+		Data:      reply,
+	}
+
+	d, err := json.Marshal(replyMsg)
+	if err != nil {
+		utils.LogError("json 序列化错误：%v", err)
+		return
+	}
+
+	msg := mess.ChatMess{
+		Message: d,
+		ConvID:  reply.ConvID,
+		To:      to,
+	}
+	value, _ := json.Marshal(msg)
+
+	go messagequeue.KWriter().WriteMessages(context.Background(), kafka.Message{
+		Topic: "chat",
+		Key:   []byte(msg.ConvID),
+		Value: value,
+	})
 }
 
 func (ws *WsService) SendMessage(ctx context.Context, id string, msg response.WSMessage) {
@@ -189,25 +112,38 @@ func (ws *WsService) SendMessage(ctx context.Context, id string, msg response.WS
 		return
 	}
 
-	client.SendMesage(data)
+	client.SendMessage(data)
 }
 
-func (ws *WsService) SendGroupMessage(ctx context.Context, senderID, groupID string, msg response.WSMessage) {
-	logger := ctxkey.GetLogger(ctx)
-	group, ok := ws.hub.GetGroup(groupID)
+func (ws *WsService) SendBytes(ctx context.Context, id string, data []byte) {
+	client, ok := ws.hub.GetClient(id)
 	if !ok {
-		logger.Info("websocket", "op", "发送群消息", "reason", "群不存在，消息丢弃")
+		logger := ctxkey.GetLogger(ctx)
+		logger.Warn("websocket", "reason", "SendMessage 客户端不存在", "id", id)
 		return
 	}
+	client.SendMessage(data)
+}
+
+func (ws *WsService) SendGroupMessage(ctx context.Context, senderID string, groupID int64, msg *response.ChatReply) {
+	logger := ctxkey.GetLogger(ctx)
+	// 找群中所有用户id
+	ids, err := ws.dao.FindGroupUserIDs(groupID)
+	if err != nil {
+		logger.Error("websocket", "op", "找群中所有成员id", "groupID", groupID, "error", err)
+		return
+	}
+
 	// 除发送者外的所有
-	for k := range group {
-		if k != senderID {
-			ws.SendMessage(ctx, k, msg)
+	for _, id := range ids {
+		encID := ws.sf.Encode(id)
+		if encID != senderID {
+			ws.SendMessageByMQ(msg, encID)
 		}
 	}
 }
 
-func (ws *WsService) Add(ctx context.Context, id string, conn *websocket.Conn) (*Client, error) {
+func (ws *WsService) Add(ctx context.Context, id string, conn *websocket.Conn) (*conns.Client, error) {
 	client := ws.hub.AddClient(ctx, id, conn)
 
 	// 找用户加入的群
@@ -223,6 +159,15 @@ func (ws *WsService) Add(ctx context.Context, id string, conn *websocket.Conn) (
 	return client, err
 }
 
+func (ws *WsService) HandlePingMessage(client *conns.Client) {
+	// 延长 grpcAddr的 expire
+	job := jobs.NewUpdateGrpcaddrExpireJob()
+	job.ID = client.ID
+	key := rediskey.GrpcAddr{}
+	job.Duration = key.TTL() / 2
+	taskmanager.TaskManager.Submit(job)
+}
+
 //	type ChatData struct {
 //		From        string `json:"from"` // 发送者id
 //		To          string `json:"to"`   // 接收者id
@@ -232,7 +177,7 @@ func (ws *WsService) Add(ctx context.Context, id string, conn *websocket.Conn) (
 //		MsgType     int    `json:"msg_type"`      // 消息类型 1:文本 2:图片 3:语言 4:视频
 //		ClientMsgID string `json:"client_msg_id"` // 本地的临时id
 //	}
-func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatData) error {
+func (ws *WsService) HandleChatMessage(client *conns.Client, chatData *request.ChatData) error {
 	id := client.ID
 	if id != chatData.From {
 		return ws.Wrap("", errs.ErrWSClientIDSenderIDNotMatch, "from", chatData.From)
@@ -344,26 +289,22 @@ func (ws *WsService) HandleChatMessage(client *Client, chatData *request.ChatDat
 		},
 	}
 
-	ws.SendMessage(client.ctx, id, msg)
+	ws.SendMessage(client.GetContext(), id, msg)
 
 	// 给对方发送
-	replyMsg := response.WSMessage{
-		Type:      "chat_reply",
-		Timestamp: time.Now().UnixMilli(),
-		Data: response.ChatReply{
-			ConvID:   conv.PublicID,
-			To:       chatData.To,
-			MsgID:    lastMessage.PublicID,
-			SenderID: chatData.From,
-			Content:  chatData.Content,
-			MsgSeq:   lastMessage.Seq,
-		},
+	replyData := response.ChatReply{
+		ConvID:   conv.PublicID,
+		To:       chatData.To,
+		MsgID:    lastMessage.PublicID,
+		SenderID: chatData.From,
+		Content:  chatData.Content,
+		MsgSeq:   lastMessage.Seq,
 	}
 
 	if temConv.IsGroupConType() {
-		ws.SendGroupMessage(client.ctx, chatData.From, chatData.To, replyMsg)
+		ws.SendGroupMessage(client.GetContext(), chatData.From, rawToID, &replyData)
 	} else {
-		ws.SendMessage(client.ctx, chatData.To, replyMsg)
+		ws.SendMessageByMQ(&replyData, replyData.To)
 	}
 
 	return nil
@@ -466,12 +407,64 @@ func (ws *WsService) fetchGroupConvIDs(id string) ([]string, error) {
 }
 
 func (ws *WsService) joinGroupHandler(ctx context.Context, message *kafka.Message, commitFunc func()) error {
-	var msg *mess.JoinGroupMess
-	err := json.Unmarshal(message.Value, msg)
+	var msg mess.JoinGroupMess
+	err := json.Unmarshal(message.Value, &msg)
 	if err != nil {
 		// TODO: 记录错误
 		return err
 	}
 	utils.LogInfo("收到加入群消息：%v\n", msg)
+	ws.hub.AddGroup(msg.UserID, msg.GroupID)
+	commitFunc()
+	return nil
+}
+
+func (ws *WsService) chatHandler(ctx context.Context, message *kafka.Message, commitFunc func()) error {
+	var chatMess mess.ChatMess
+	_ = json.Unmarshal(message.Value, &chatMess)
+	utils.LogInfo("收到消息：to=%s\n", chatMess.To)
+
+	commit := true
+	defer func() {
+		if commit {
+			commitFunc()
+		}
+	}()
+
+	_, ok := ws.hub.GetClient(chatMess.To)
+	if !ok {
+		// client.SendMessage(chatMess.Message)
+		return nil
+	}
+
+	addr, err := ws.dao.GetGrpcAddrFromRedis(chatMess.To)
+	if err != nil {
+		utils.LogError("获取grpc地址从redis 出错：%v\n", err)
+		return nil
+	}
+
+	// 不存在
+	if addr == "" {
+		return nil
+	}
+
+	utils.LogDebug("addr:%s", addr)
+	// 进行拨号
+	conn, err := pool.GrpcConnPool.Get(addr)
+	if err != nil {
+		log.Fatalf("dial failed: %v", err)
+		return nil
+	}
+
+	stub := chatpt.NewChatClient(conn)
+	stub.Chat(context.Background(), &chatpt.ChatpMessage{
+		Content: chatMess.Message,
+		ToID:    chatMess.To,
+	})
+
+	// 得到消息
+	// 通过本地找
+	// 没有找到，从redis找到rpc地址
+	// 然后 直接发送
 	return nil
 }

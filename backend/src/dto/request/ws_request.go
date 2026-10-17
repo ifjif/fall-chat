@@ -17,3 +17,33 @@ type ChatData struct {
 	MsgType     int    `json:"msg_type"`      // 消息类型 1:文本 2:图片 3:语言 4:视频
 	ClientMsgID string `json:"client_msg_id"` // 本地的临时id
 }
+
+type OfferData struct {
+	PeerID string `json:"peer_id"`
+	Offer  json.RawMessage
+}
+
+type AnswerData struct {
+	PeerID string `json:"peer_id"`
+	Answer json.RawMessage
+}
+
+type CandidateData struct {
+	PeerID    string `json:"peer_id"`
+	Candidate json.RawMessage
+}
+
+type JoinData struct {
+	RoomID string `json:"room_id"`
+	PeerID string `json:"peer_id"`
+}
+
+type InviteData struct {
+	RoomID string `json:"room_id"`
+	PeerID string `json:"peer_id"`
+}
+
+type LeaveData struct {
+	RoomID string `json:"room_id"`
+	PeerID string `json:"peer_id"`
+}

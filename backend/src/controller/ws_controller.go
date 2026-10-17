@@ -8,10 +8,11 @@ import (
 	"log/slog"
 	"net/url"
 	"time"
-	"zzc/fall-chat/src/ctxkey"
+	"zzc/fall-chat/src/conns"
 	"zzc/fall-chat/src/dto/request"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
+	"zzc/fall-chat/src/keys/ctxkey"
 	"zzc/fall-chat/src/middleware"
 	"zzc/fall-chat/src/pkg/resp"
 	"zzc/fall-chat/src/service"
@@ -22,12 +23,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type MessageHandler func(client *service.Client, message *request.WSMessage)
+type MessageHandler func(client *conns.Client, message *request.WSMessage)
 
 type WSController struct {
 	BaseController
 	wsService       *service.WsService
 	messageHandlers map[string]MessageHandler
+	room            map[string]bool
 }
 
 func NewWSController(name string) *WSController {
@@ -35,6 +37,7 @@ func NewWSController(name string) *WSController {
 	return &WSController{
 		BaseController:  bs,
 		messageHandlers: make(map[string]MessageHandler),
+		room:            make(map[string]bool),
 	}
 }
 
@@ -55,7 +58,14 @@ func (wsc *WSController) SetRoute(r fiber.Router) {
 
 	upgrade.Get("/:id", wsc.websocketHandler())
 
+	wsc.messageHandlers["ping"] = wsc.pingHandler
 	wsc.messageHandlers["chat"] = wsc.chatMessageHandler
+	wsc.messageHandlers["offer"] = wsc.offerMessageHandler
+	wsc.messageHandlers["answer"] = wsc.answerMessageHandler
+	wsc.messageHandlers["candidate"] = wsc.candidateMessageHandler
+	wsc.messageHandlers["join"] = wsc.joinMessageHandler
+	wsc.messageHandlers["invite"] = wsc.inviteMessageHandler
+	wsc.messageHandlers["leave"] = wsc.leaveMessageHandler
 }
 
 func (wsc *WSController) getLogger(c *websocket.Conn) *slog.Logger {
@@ -72,9 +82,10 @@ func (wsc *WSController) accessURL(c fiber.Ctx) error {
 		wsc.Wrap("生成accessToken", err, "username", username)
 		return err
 	}
-	protocol := "ws"
-	host := "localhost"
-	port := "8080"
+	protocol := "wss"
+	// host := "localhost"
+	host := "192.168.1.106"
+	port := "443"
 	urlPrefix := "/api/v1"
 	url := fmt.Sprintf("%s://%s:%s%s/ws/%s?token=%s",
 		protocol, host, port, urlPrefix, pID, url.QueryEscape("Bearer "+token))
@@ -107,6 +118,9 @@ func (wsc *WSController) websocketHandler() func(fiber.Ctx) error {
 		}
 		defer wsc.wsService.Remove(id)
 
+		// TODO: 将目标 所在服务器ip:port存入redis, 供后续grpc调用
+		wsc.wsService.RegisterGrpcAddr(id)
+
 		for {
 			_, msg, err := c.ReadMessage()
 			if err != nil {
@@ -127,12 +141,8 @@ func (wsc *WSController) websocketHandler() func(fiber.Ctx) error {
 	})
 }
 
-func (wsc *WSController) dispatchMessage(client *service.Client, message *request.WSMessage) {
+func (wsc *WSController) dispatchMessage(client *conns.Client, message *request.WSMessage) {
 	mType := message.Type
-
-	if mType != "ping" {
-		// wsc.LogInfo("dispatchMessage", "id:", id, "type:", mType)
-	}
 
 	messageHandler, ok := wsc.messageHandlers[mType]
 
@@ -143,11 +153,11 @@ func (wsc *WSController) dispatchMessage(client *service.Client, message *reques
 	wsc.unmatchHandler(client, message)
 }
 
-func (wsc *WSController) unmatchHandler(client *service.Client, message *request.WSMessage) {
+func (wsc *WSController) unmatchHandler(client *conns.Client, message *request.WSMessage) {
 	wsc.errorHandler(client, "unmatch", &response.WSErr{Error: errs.ErrWSNotFound})
 }
 
-func (wsc *WSController) errorHandler(client *service.Client, ty string, data *response.WSErr) {
+func (wsc *WSController) errorHandler(client *conns.Client, ty string, data *response.WSErr) {
 	// 错误的类型
 	errType := ty + "_error"
 	err := data.Error
@@ -173,7 +183,11 @@ func (wsc *WSController) errorHandler(client *service.Client, ty string, data *r
 	wsc.wsService.SendMessage(client.GetContext(), client.ID, respErr)
 }
 
-func (wsc *WSController) chatMessageHandler(client *service.Client, message *request.WSMessage) {
+func (wsc *WSController) pingHandler(client *conns.Client, message *request.WSMessage) {
+	wsc.wsService.HandlePingMessage(client)
+}
+
+func (wsc *WSController) chatMessageHandler(client *conns.Client, message *request.WSMessage) {
 	var chatData request.ChatData
 	err := json.Unmarshal(message.Data, &chatData)
 	if err != nil {
@@ -192,5 +206,107 @@ func (wsc *WSController) chatMessageHandler(client *service.Client, message *req
 			},
 		}
 		wsc.errorHandler(client, message.Type, &errResp)
+	}
+}
+
+func (wsc *WSController) offerMessageHandler(client *conns.Client, message *request.WSMessage) {
+	var offerData request.OfferData
+	json.Unmarshal(message.Data, &offerData)
+	fmt.Printf("收到offer: %v\n", offerData)
+
+	wsc.wsService.SendMessage(context.Background(), offerData.PeerID, response.WSMessage{
+		Type: message.Type,
+		Data: response.WebRTCData{
+			PeerID: client.ID,
+			Data:   offerData.Offer,
+		},
+	})
+}
+
+func (wsc *WSController) answerMessageHandler(client *conns.Client, message *request.WSMessage) {
+	var answerData request.AnswerData
+	json.Unmarshal(message.Data, &answerData)
+	fmt.Printf("收到answer: %v\n", answerData)
+
+	wsc.wsService.SendMessage(context.Background(), answerData.PeerID, response.WSMessage{
+		Type: message.Type,
+		Data: response.WebRTCData{
+			PeerID: client.ID,
+			Data:   answerData.Answer,
+		},
+	})
+}
+
+func (wsc *WSController) candidateMessageHandler(client *conns.Client, message *request.WSMessage) {
+	var candidateDate request.CandidateData
+	json.Unmarshal(message.Data, &candidateDate)
+	fmt.Printf("收到candidate: %v\n", candidateDate)
+
+	wsc.wsService.SendMessage(context.Background(), candidateDate.PeerID, response.WSMessage{
+		Type: message.Type,
+		Data: response.WebRTCData{
+			PeerID: client.ID,
+			Data:   candidateDate.Candidate,
+		},
+	})
+}
+
+func (wsc *WSController) joinMessageHandler(client *conns.Client, message *request.WSMessage) {
+	var joinData request.JoinData
+	json.Unmarshal(message.Data, &joinData)
+
+	// 获取房间
+	room := make([]string, 0)
+	for k := range wsc.room {
+		room = append(room, k)
+	}
+
+	wsc.wsService.SendMessage(context.Background(), joinData.PeerID, response.WSMessage{
+		Type: "joined",
+		Data: fiber.Map{
+			"members": room,
+		},
+	})
+
+	for _, id := range room {
+		wsc.wsService.SendMessage(context.Background(), id, response.WSMessage{
+			Type: "peer-joined",
+			Data: fiber.Map{
+				"peerId": joinData.PeerID,
+			},
+		})
+	}
+
+	wsc.room[joinData.PeerID] = true
+}
+
+func (wsc *WSController) inviteMessageHandler(client *conns.Client, message *request.WSMessage) {
+	var inviteData request.InviteData
+	json.Unmarshal(message.Data, &inviteData)
+
+	wsc.wsService.SendMessage(context.Background(), inviteData.PeerID, response.WSMessage{
+		Type: message.Type,
+		Data: fiber.Map{
+			"room_id": inviteData.RoomID,
+			"id":      inviteData.PeerID,
+		},
+	})
+}
+
+func (wsc *WSController) leaveMessageHandler(client *conns.Client, message *request.WSMessage) {
+	var leaveData request.LeaveData
+	json.Unmarshal(message.Data, &leaveData)
+
+	if wsc.room != nil {
+		delete(wsc.room, leaveData.PeerID)
+	}
+
+	for id := range wsc.room {
+		wsc.wsService.SendMessage(context.Background(), id, response.WSMessage{
+			Type: "peer-left",
+			Data: fiber.Map{
+				"peerId": leaveData.PeerID,
+			},
+		})
 	}
 }

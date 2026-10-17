@@ -1,0 +1,15 @@
+syntax="proto3";
+
+package chatpt;
+import "google/protobuf/empty.proto";
+
+option go_package = "src/proto/chatpt";
+
+service Chat {
+  rpc chat(ChatpMessage) returns(google.protobuf.Empty);
+}
+
+message ChatpMessage {
+  string toID = 1;
+  bytes content = 2;
+}

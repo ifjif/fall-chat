@@ -2,10 +2,10 @@ package data
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 	"zzc/fall-chat/src/database"
+	rediskey "zzc/fall-chat/src/keys/redis_key"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/utils"
 
@@ -60,22 +60,22 @@ func (dao *ConversationMemberDao) ListBriefBatchByConvIDAndMemberIDs(convID int6
 	// 数据库中找到的回写到redis
 	// 最后返回
 
-	// im:user:nickname:${memberID}
-	// im:user:avatar:${memberID}
-	// im:user:ingroupname:${memberID}
 	if len(memberIDs) == 0 {
 		return nil, nil
 	}
-	nicknameKeyPrefix := "im:user:nickname"
-	avatarKeyPrefix := "im:user:avatar"
-	ingroupnameKeyPrefix := "im:user:ingroupname"
+	nicknameKey := rediskey.ImUserNickname{}
+	avatarKey := rediskey.ImUserAvatar{}
+	ingroupnameKey := rediskey.ImUserIngroupname{ConvID: convID}
 
 	keys := make([]string, 0, len(memberIDs)*3)
 
 	for _, id := range memberIDs {
-		keys = append(keys, fmt.Sprintf("%s:%d", nicknameKeyPrefix, id))
-		keys = append(keys, fmt.Sprintf("%s:%d", avatarKeyPrefix, id))
-		keys = append(keys, fmt.Sprintf("%s:%d:%d", ingroupnameKeyPrefix, convID, id))
+		nicknameKey.ID = id
+		avatarKey.ID = id
+		ingroupnameKey.ID = id
+		keys = append(keys, nicknameKey.String())
+		keys = append(keys, avatarKey.String())
+		keys = append(keys, ingroupnameKey.String())
 	}
 
 	mgetCmd := dao.rdb.MGet(context.Background(), keys...)
@@ -135,25 +135,34 @@ func (dao *ConversationMemberDao) ListBriefBatchByConvIDAndMemberIDs(convID int6
 
 	result = append(result, rows...)
 
-	expiration := 1 * time.Hour
-
 	missKeyVals := make([]string, 0, len(rows)*6)
+	missKeyExpires := []time.Duration{
+		nicknameKey.TTL(),
+		avatarKey.TTL(),
+		ingroupnameKey.TTL(),
+	}
 	for i := range rows {
 		id := rows[i].ID
-		missKeyVals = append(missKeyVals, fmt.Sprintf("%s:%d", nicknameKeyPrefix, id))
+		nicknameKey.ID = id
+		avatarKey.ID = id
+		ingroupnameKey.ID = id
+
+		missKeyVals = append(missKeyVals, nicknameKey.String())
 		missKeyVals = append(missKeyVals, rows[i].Nickname)
 
-		missKeyVals = append(missKeyVals, fmt.Sprintf("%s:%d", avatarKeyPrefix, id))
+		missKeyVals = append(missKeyVals, avatarKey.String())
 		missKeyVals = append(missKeyVals, rows[i].Avatar)
 
-		missKeyVals = append(missKeyVals, fmt.Sprintf("%s:%d:%d", ingroupnameKeyPrefix, convID, id))
+		missKeyVals = append(missKeyVals, ingroupnameKey.String())
 		missKeyVals = append(missKeyVals, rows[i].InGropNickname)
 	}
 
 	pipe := dao.rdb.Pipeline()
 	pipe.MSet(context.Background(), missKeyVals)
+
 	for i := 0; i < len(missKeyVals); i += 2 {
 		key := missKeyVals[i]
+		expiration := missKeyExpires[i%6/2]
 		pipe.Expire(context.Background(), key, expiration)
 	}
 

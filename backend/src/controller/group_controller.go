@@ -3,8 +3,8 @@ package controller
 import (
 	"zzc/fall-chat/src/bind"
 	"zzc/fall-chat/src/converter"
-	"zzc/fall-chat/src/ctxkey"
 	"zzc/fall-chat/src/dto/request"
+	"zzc/fall-chat/src/keys/ctxkey"
 	"zzc/fall-chat/src/middleware"
 	"zzc/fall-chat/src/pkg/resp"
 	"zzc/fall-chat/src/service"
@@ -40,6 +40,7 @@ func (gi *GroupInfoController) SetRoute(r fiber.Router) {
 
 func (gic *GroupInfoController) createGroup(c fiber.Ctx) error {
 	userID := ctxkey.GetUserID(c)
+	userPublicID := ctxkey.GetUserPubID(c)
 	username := ctxkey.GetUsername(c)
 
 	req, err := bind.Body[request.CreateGroupRequest](c)
@@ -52,6 +53,7 @@ func (gic *GroupInfoController) createGroup(c fiber.Ctx) error {
 	cmd := converter.ToCreateGroupCommand(req)
 	cmd.CreatorID = userID
 	cmd.Username = username
+	cmd.CreatorPublicID = userPublicID
 
 	err = gic.groupService.CreateGroup(cmd)
 	if err != nil {

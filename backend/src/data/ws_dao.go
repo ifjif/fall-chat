@@ -2,10 +2,13 @@ package data
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"strconv"
 	"time"
 	"zzc/fall-chat/src/database"
+	"zzc/fall-chat/src/host"
+	rediskey "zzc/fall-chat/src/keys/redis_key"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/utils"
 
@@ -13,29 +16,68 @@ import (
 	"gorm.io/gorm"
 )
 
-type ConvCache map[string]*model.IMConversation
-
 type WSDao struct {
 	BaseDao
-	convCache ConvCache
 }
 
 func NewWSDao(db *gorm.DB) *WSDao {
 	bs := BaseDao{db: db, rdb: database.Redis()}
 	return &WSDao{
-		BaseDao:   bs,
-		convCache: make(ConvCache),
+		BaseDao: bs,
 	}
+}
+
+func (dao *WSDao) AddGrpcAddr2Redis(id string) {
+	key := rediskey.GrpcAddr{ID: id}
+	grpcAddr := host.GRPCAddr
+	// 5min
+	err := dao.rdb.Set(context.Background(), key.String(), grpcAddr, key.TTL()).Err()
+	if err != nil {
+		utils.LogError("设置%s 失败: error=%v", key, err)
+	}
+}
+
+func (dao *WSDao) DelGrpcAddr2Redis(id string) {
+	key := rediskey.GrpcAddr{ID: id}
+	dao.rdb.Del(context.Background(), key.String())
+}
+
+func (dao *WSDao) GetGrpcAddrFromRedis(id string) (addr string, err error) {
+	key := rediskey.GrpcAddr{ID: id}
+
+	cmd := dao.rdb.Get(context.Background(), key.String())
+
+	if cmd.Err() != nil && cmd.Err() != redis.Nil {
+		return "", cmd.Err()
+	}
+	addr, _ = cmd.Result()
+
+	return addr, nil
 }
 
 func (dao *WSDao) findConversationBySingleKeyWithDB(db *gorm.DB, singleKey string) (*model.IMConversation, error) {
 	// 从缓存中找，没有从数据库
-	if conv, ok := dao.convCache[singleKey]; ok {
-		return conv, nil
+	key := rediskey.Conv{SingleKey: singleKey}
+
+	res, err := dao.rdb.Get(context.Background(), key.String()).Result()
+	if err != nil && err != redis.Nil {
+		// TODO:记录错误
+		utils.LogError("找会话基本信息 从redis 失败：%v", err)
 	}
 
 	var conv model.IMConversation
-	err := db.
+	if err != redis.Nil {
+		err := json.Unmarshal([]byte(res), &conv)
+		if err == nil {
+			utils.LogDebug("从缓存中找到--------")
+			return &conv, nil
+		}
+		// TODO: 记录json错误
+		utils.LogError("json反序列化错误：%v", err)
+	}
+
+	// 从数据库
+	err = db.
 		Where("single_key = ?", singleKey).
 		Select("id, public_id,conv_type").
 		Take(&conv).Error
@@ -48,8 +90,22 @@ func (dao *WSDao) findConversationBySingleKeyWithDB(db *gorm.DB, singleKey strin
 		return nil, err
 	}
 
-	// 设置缓存
-	dao.convCache[singleKey] = &conv
+	cacheInfo := map[string]any{
+		"id":        conv.ID,
+		"public_id": conv.PublicID,
+		"conv_type": conv.ConvType,
+	}
+	value, err := json.Marshal(cacheInfo)
+	if err != nil {
+		utils.LogError("json 序列化失败：%v", err)
+		return &conv, nil
+	}
+
+	err = dao.rdb.Set(context.Background(), key.String(), value, key.TTL()).Err()
+	if err != nil {
+		// TODO: 记录日志
+		utils.LogError("设置缓存失败：%v", err)
+	}
 
 	return &conv, nil
 }
@@ -100,9 +156,9 @@ func (dao *WSDao) FindUserProfile(id int64) (*model.User, error) {
 
 func (dao *WSDao) FindGroupConvIDsByUserID(id int64) ([]string, error) {
 	// 先从redis
-	key := fmt.Sprintf("im:user:conv:groupid:%d", id)
+	key := rediskey.ImUserConvGroupID{ID: id}
 
-	cmd := dao.rdb.SMembers(context.Background(), key)
+	cmd := dao.rdb.SMembers(context.Background(), key.String())
 	err := cmd.Err()
 	if err != nil && err != redis.Nil {
 		// TODO: 记录 redis服务错误
@@ -126,14 +182,14 @@ func (dao *WSDao) FindGroupConvIDsByUserID(id int64) ([]string, error) {
 	}
 
 	var args []any
-	args = append(args, 8*time.Hour/time.Second)
+	args = append(args, key.TTL()/time.Second)
 	args = append(args, utils.ToAnySlice(groupIds)...)
 
 	luaScript := `
 		redis.call('SADD', KEYS[1], unpack(ARGV, 2, #ARGV))
 		return redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
 	`
-	cmdR := dao.rdb.Eval(context.Background(), luaScript, []string{key}, args...)
+	cmdR := dao.rdb.Eval(context.Background(), luaScript, []string{key.String()}, args...)
 
 	if cmdR.Err() != nil {
 		// TODO: redis服务错误
@@ -141,4 +197,46 @@ func (dao *WSDao) FindGroupConvIDsByUserID(id int64) ([]string, error) {
 	}
 
 	return groupIds, nil
+}
+
+// 找群 中所有用户ids
+func (dao *WSDao) FindGroupUserIDs(groupID int64) ([]int64, error) {
+	key := rediskey.GroupUserIDs{GroupID: groupID}
+
+	res, err := dao.rdb.SMembers(context.Background(), key.String()).Result()
+	if err != nil {
+		utils.LogError("从redis中找 group=%s 的用户id失败：%v", err)
+	}
+
+	var result []int64
+	if len(res) > 0 {
+		for _, v := range res {
+			iv, _ := strconv.ParseInt(v, 0, 64)
+			result = append(result, iv)
+		}
+		return result, nil
+	}
+
+	err = dao.db.Model(model.GroupMember{}).
+		Where("group_id = ?", groupID).
+		Pluck("user_id", &result).Error
+	if err != nil {
+		return nil, err
+	}
+
+	luascript := `
+		redis.call('sadd', KEYS[1], unpack(ARGV, 2, #ARGV))
+		return redis.call('expire', KEYS[1], tonumber(ARGV[1]))
+	`
+
+	args := []any{
+		key.TTL() / time.Second,
+	}
+	args = append(args, utils.ToAnySlice(result)...)
+	err = dao.rdb.Eval(context.Background(), luascript, []string{key.String()}, args...).Err()
+	if err != nil {
+		utils.LogError("设置group=%s的所有用户id到redis失败失败: error=%v", err)
+	}
+
+	return result, err
 }

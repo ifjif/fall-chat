@@ -76,8 +76,18 @@ export const useWsStore = defineStore('ws', () => {
     messages.value = []
   }
 
+  function on(type, handler) {
+    ws.on(type, handler)
+  }
+
+  function onOnce(type, handler) {
+    ws.onOnce(type, handler)
+  }
+
   return {
     sendMessage,
-    clearMessage
+    clearMessage,
+    on,
+    onOnce
   }
 })

@@ -1,14 +1,19 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"zzc/fall-chat/src/command"
 	"zzc/fall-chat/src/converter"
 	"zzc/fall-chat/src/data"
 	"zzc/fall-chat/src/dto/response"
+	"zzc/fall-chat/src/mess"
+	messagequeue "zzc/fall-chat/src/message_queue"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/query"
 	"zzc/fall-chat/src/utils"
 
+	"github.com/segmentio/kafka-go"
 	"gorm.io/gorm"
 )
 
@@ -99,6 +104,18 @@ func (gs *GroupService) CreateGroup(cmd *command.CreateGroupCommand) error {
 	if err != nil {
 		return gs.Wrap(reason, err, "username", cmd.Username)
 	}
+
+	// TODO: 发送消息队列, join_group
+	v := mess.JoinGroupMess{
+		GroupID: groupInfo.PublicID,
+		UserID:  cmd.CreatorPublicID,
+	}
+	bv, _ := json.Marshal(v)
+	go messagequeue.KWriter().WriteMessages(context.Background(), kafka.Message{
+		Topic: "join-group",
+		Key:   []byte(groupInfo.PublicID),
+		Value: bv,
+	})
 	return nil
 }
 

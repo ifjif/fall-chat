@@ -420,7 +420,7 @@ func (ss *SocialService) HandleGroupRequest(cmd *command.SocialHandleGroupReques
 	}
 	bv, _ := json.Marshal(v)
 	// TODO: 发送消息队列, join_group
-	messagequeue.KWriter().WriteMessages(context.Background(), kafka.Message{
+	go messagequeue.KWriter().WriteMessages(context.Background(), kafka.Message{
 		Topic: "join-group",
 		Key:   []byte(groupID),
 		Value: bv,

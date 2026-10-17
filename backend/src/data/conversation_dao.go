@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 	"zzc/fall-chat/src/database"
+	rediskey "zzc/fall-chat/src/keys/redis_key"
 	"zzc/fall-chat/src/model"
 
 	"github.com/redis/go-redis/v9"
@@ -34,15 +35,28 @@ func (dao *ConversationDao) ListByUserID(userID int64) ([]model.IMConversationRo
 		Where("cm.user_id = ?", userID).
 		Select("cs.*, cm.peer_id,cm.last_read_seq").
 		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
 
 	reqKeys := make([]string, 0, len(rows)*2)
+
+	userAvatarKey := rediskey.ImUserAvatar{}
+	userNicknameKey := rediskey.ImUserNickname{}
+	groupAvatarKey := rediskey.ImGroupAvatar{}
+	groupNicknameKey := rediskey.ImGroupNickname{}
 	for i := range rows {
-		ktype := "user"
+		userAvatarKey.ID = rows[i].PeerID
+		userNicknameKey.ID = rows[i].PeerID
+		groupAvatarKey.ID = rows[i].PeerID
+		groupNicknameKey.ID = rows[i].PeerID
+
+		avatarKey := userAvatarKey.String()
+		nicknameKey := userNicknameKey.String()
 		if rows[i].IsGroupConType() {
-			ktype = "group"
+			avatarKey = groupAvatarKey.String()
+			nicknameKey = groupNicknameKey.String()
 		}
-		avatarKey := fmt.Sprintf("im:%s:avatar:%d", ktype, rows[i].PeerID)
-		nicknameKey := fmt.Sprintf("im:%s:nickname:%d", ktype, rows[i].PeerID)
 
 		reqKeys = append(reqKeys, avatarKey, nicknameKey)
 	}
@@ -88,8 +102,12 @@ func (dao *ConversationDao) ListByUserID(userID int64) ([]model.IMConversationRo
 
 	var infoResult []model.UserOrGroupBaseInfoRow
 	err = dao.db.Raw("? union all ?",
-		dao.db.Select("id,nickname as peer_nickname, avatar").Model(&model.User{}).Where("id in ?", missingValue),
-		dao.db.Select("id, group_name as peer_nickname,avatar").Model(&model.GroupInfo{}).Where("id in ?", missingValue),
+		dao.db.Select("id,nickname as peer_nickname, avatar, 'user' as type_info").
+			Model(&model.User{}).
+			Where("id in ?", missingValue),
+		dao.db.Select("id, group_name as peer_nickname,avatar, 'group' as type_info").
+			Model(&model.GroupInfo{}).
+			Where("id in ?", missingValue),
 	).Scan(&infoResult).Error
 
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -98,18 +116,28 @@ func (dao *ConversationDao) ListByUserID(userID int64) ([]model.IMConversationRo
 
 	// 附加信息并设置缓存
 	p := dao.rdb.Pipeline()
-	duration := 1 * time.Hour
 	ctx := context.Background()
+	avatarDuration := time.Hour
+	nicknameDuration := time.Hour
+
 	for i := range infoResult {
 		peerID := infoResult[i].ID
+		if infoResult[i].IsGroup() {
+			avatarDuration = groupAvatarKey.TTL()
+			nicknameDuration = groupNicknameKey.TTL()
+		} else if infoResult[i].IsUser() {
+			avatarDuration = userAvatarKey.TTL()
+			nicknameDuration = userNicknameKey.TTL()
+		}
+
 		idx := missingMap[peerID]
 		avatar := infoResult[i].Avatar
 		nickname := infoResult[i].PeerNickname
 		rows[idx].PeerAvatar = avatar
 		rows[idx].PeerNickname = nickname
 
-		p.SetEx(ctx, reqKeys[idx*2], avatar, duration)
-		p.SetEx(ctx, reqKeys[idx*2+1], nickname, duration)
+		p.SetEx(ctx, reqKeys[idx*2], avatar, avatarDuration)
+		p.SetEx(ctx, reqKeys[idx*2+1], nickname, nicknameDuration)
 	}
 
 	if len(infoResult) != 0 {
@@ -135,13 +163,21 @@ func (dao *ConversationDao) SingleByConvID(convID, userID int64) (*model.IMConve
 		return nil, nil
 	}
 
-	typeStr := "user"
-	if row.IsGroupConType() {
-		typeStr = "group"
-	}
+	userAvatarKey := rediskey.ImUserAvatar{ID: row.PeerID}
+	userNicknameKey := rediskey.ImUserNickname{ID: row.PeerID}
+	groupAvatarKey := rediskey.ImGroupAvatar{ID: row.PeerID}
+	groupNicknameKey := rediskey.ImGroupNickname{ID: row.PeerID}
 
-	avatarKey := fmt.Sprintf("im:%s:avatar:%d", typeStr, row.PeerID)
-	nicknameKey := fmt.Sprintf("im:%s:nickname:%d", typeStr, row.PeerID)
+	avatarKey := userAvatarKey.String()
+	nicknameKey := userNicknameKey.String()
+	avatarDuration := userAvatarKey.TTL()
+	nicknameDuration := userNicknameKey.TTL()
+	if row.IsGroupConType() {
+		avatarKey = groupAvatarKey.String()
+		nicknameKey = groupNicknameKey.String()
+		avatarDuration = groupAvatarKey.TTL()
+		nicknameDuration = groupAvatarKey.TTL()
+	}
 
 	cmd := dao.rdb.MGet(context.Background(), avatarKey, nicknameKey)
 	err = cmd.Err()
@@ -180,9 +216,8 @@ func (dao *ConversationDao) SingleByConvID(convID, userID int64) (*model.IMConve
 	// 存入redis
 	p := dao.rdb.Pipeline()
 	ctx := context.Background()
-	duration := 1 * time.Hour
-	p.SetEx(ctx, avatarKey, infoResult.Avatar, duration)
-	p.SetEx(ctx, nicknameKey, infoResult.PeerNickname, duration)
+	p.SetEx(ctx, avatarKey, infoResult.Avatar, avatarDuration)
+	p.SetEx(ctx, nicknameKey, infoResult.PeerNickname, nicknameDuration)
 	p.Exec(ctx)
 
 	return &row, err

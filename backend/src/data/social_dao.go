@@ -3,8 +3,8 @@ package data
 import (
 	"context"
 	"errors"
-	"fmt"
 	"zzc/fall-chat/src/database"
+	rediskey "zzc/fall-chat/src/keys/redis_key"
 	"zzc/fall-chat/src/model"
 
 	"github.com/redis/go-redis/v9"
@@ -252,6 +252,7 @@ func (dao *SocialDao) FindGroupConvID(groupID string) (int64, error) {
 	var convID int64
 	err := dao.db.Model(model.IMConversation{}).
 		Where("single_key = ?", groupID).
+		Select("id").
 		First(&convID).Error
 
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
@@ -262,7 +263,7 @@ func (dao *SocialDao) FindGroupConvID(groupID string) (int64, error) {
 }
 
 func (dao *SocialDao) SetGroupCache(groupID string, userID int64) {
-	key := fmt.Sprintf("im:user:conv:groupid:%d", userID)
+	key := rediskey.ImUserConvGroupID{ID: userID}
 
 	luaScript := `
 		if redis.call('exists',keys[1]) == 1 then
@@ -272,7 +273,7 @@ func (dao *SocialDao) SetGroupCache(groupID string, userID int64) {
 		end
 	`
 
-	cmd := dao.rdb.Eval(context.Background(), luaScript, []string{key}, groupID)
+	cmd := dao.rdb.Eval(context.Background(), luaScript, []string{key.String()}, groupID)
 	err := cmd.Err()
 	if err != nil && err != redis.Nil {
 		// WARN: redis 服务错误

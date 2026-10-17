@@ -5,6 +5,7 @@
 //    (msg) => void
 
 import { wsAccessUrlApi } from "@/api/wsc";
+import { FlMessage } from "fall-ui";
 
 export class WebSocketService {
   static instance = null;
@@ -38,6 +39,7 @@ export class WebSocketService {
       this.isConnected = true
       this.reconnectAttempts = 0
       this.startHeartbeat()
+      FlMessage({ type: 'success', content: 'ws success' })
     }
 
     this.ws.onclose = (event) => {
@@ -103,6 +105,12 @@ export class WebSocketService {
   on(type, callback) {
     if (!this.messageCallbacks[type]) this.messageCallbacks[type] = []
     this.messageCallbacks[type].push(callback)
+  }
+
+  onOnce(type, callback) {
+    if (!this.messageCallbacks[type]) {
+      this.messageCallbacks[type] = [callback]
+    }
   }
 
   off(type, callback) {

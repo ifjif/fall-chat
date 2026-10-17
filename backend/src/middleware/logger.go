@@ -3,8 +3,8 @@ package middleware
 import (
 	"errors"
 	"time"
-	"zzc/fall-chat/src/ctxkey"
 	"zzc/fall-chat/src/errs"
+	"zzc/fall-chat/src/keys/ctxkey"
 
 	"github.com/gofiber/fiber/v3"
 )

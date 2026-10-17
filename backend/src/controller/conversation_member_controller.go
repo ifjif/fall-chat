@@ -3,8 +3,8 @@ package controller
 import (
 	"zzc/fall-chat/src/bind"
 	"zzc/fall-chat/src/converter"
-	"zzc/fall-chat/src/ctxkey"
 	"zzc/fall-chat/src/dto/request"
+	"zzc/fall-chat/src/keys/ctxkey"
 	"zzc/fall-chat/src/middleware"
 	"zzc/fall-chat/src/pkg/resp"
 	"zzc/fall-chat/src/service"

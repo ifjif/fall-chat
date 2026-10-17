@@ -7,7 +7,7 @@ import (
 	"zzc/fall-chat/src/converter"
 	"zzc/fall-chat/src/data"
 	"zzc/fall-chat/src/dto/response"
-	"zzc/fall-chat/src/job"
+	"zzc/fall-chat/src/jobs"
 	"zzc/fall-chat/src/mess"
 	messagequeue "zzc/fall-chat/src/message_queue"
 	"zzc/fall-chat/src/query"
@@ -80,20 +80,20 @@ func (cs *ConversationService) UpdateConversationHandler(ctx context.Context, ms
 		return cs.Wrap("json unmarshal kafka消息", err)
 	}
 
-	task := job.NewUpdateConversaionJob(cs.db)
-	task.ConvID = updateMess.ConvID
-	task.PeerID = updateMess.PeerID
-	task.Seq = updateMess.Seq
-	task.Duration = 500 * time.Millisecond
-	task.MsgID = updateMess.MsgID
-	task.MsgTime = updateMess.MsgTime
-	task.MsgPreview = updateMess.MsgPreview
-	task.MsgSenderID = updateMess.MsgSenderID
-	task.CompleteFunc = func() {
+	job := jobs.NewUpdateConversaionJob(cs.db)
+	job.ConvID = updateMess.ConvID
+	job.PeerID = updateMess.PeerID
+	job.Seq = updateMess.Seq
+	job.Duration = 500 * time.Millisecond
+	job.MsgID = updateMess.MsgID
+	job.MsgTime = updateMess.MsgTime
+	job.MsgPreview = updateMess.MsgPreview
+	job.MsgSenderID = updateMess.MsgSenderID
+	job.CompleteFunc = func() {
 		commitFunc()
 	}
 
-	taskmanager.TaskManager.Submit(task)
+	taskmanager.TaskManager.Submit(job)
 
 	return nil
 }

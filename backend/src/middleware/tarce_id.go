@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"log/slog"
-	"zzc/fall-chat/src/ctxkey"
+	"zzc/fall-chat/src/keys/ctxkey"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"

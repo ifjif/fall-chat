@@ -23,13 +23,13 @@ import "time"
 
 type IMConversation struct {
 	Model
-	ConvType        int8      `gorm:"column:conv_type"` // 会话类型 0:单聊 1:群聊
-	SingleKey       string    `gorm:"size:64;column:single_key;uniqueIndex"`
-	LastMsgID       int64     `gorm:"column:last_msg_id"`
-	LastMsgPreview  string    `gorm:"column:last_msg_preview;size:255"`
-	LastMsgSenderID int64     `gorm:"column:last_msg_sender_id"`
-	LastMsgTime     time.Time `gorm:"column:last_msg_time"`
-	LastMsgSeq      int64     `gorm:"column:last_msg_seq"`
+	ConvType        int8      `gorm:"column:conv_type" json:"conv_type"` // 会话类型 0:单聊 1:群聊
+	SingleKey       string    `gorm:"size:64;column:single_key;uniqueIndex" json:"single_key"`
+	LastMsgID       int64     `gorm:"column:last_msg_id" json:"last_msg_id"`
+	LastMsgPreview  string    `gorm:"column:last_msg_preview;size:255" json:"last_msg_preview"`
+	LastMsgSenderID int64     `gorm:"column:last_msg_sender_id" json:"last_msg_sender_id"`
+	LastMsgTime     time.Time `gorm:"column:last_msg_time" json:"last_msg_time"`
+	LastMsgSeq      int64     `gorm:"column:last_msg_seq" json:"last_msg_seq"`
 }
 
 func (imc *IMConversation) GetConvTypeText() string {

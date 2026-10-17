@@ -31,3 +31,8 @@ type ChatErrData struct {
 	ConvID string `json:"conv_id"`
 	MsgID  string `json:"msg_id"`
 }
+
+type WebRTCData struct {
+	PeerID string `json:"peer_id"`
+	Data   any    `json:"data"`
+}

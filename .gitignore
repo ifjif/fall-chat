@@ -21,3 +21,8 @@ tem-go/
 data_flow.md
 database.md
 go-redis.md
+/certs/
+grpc.md
+debounce_delay_task.md
+1.txt
+/conf/caddy_config

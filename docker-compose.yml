@@ -1,4 +1,18 @@
 services:
+  caddy:
+    image: docker.m.daocloud.io/caddy:2-alpine
+    container_name: caddy2
+    restart: unless-stopped
+    ports:
+      - "81:80"
+      - "443:443"
+      - "443:443/udp" #后续测http3/quic保留
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro # 容器内只读
+      - ./data/caddy:/data
+      - ./conf/caddy_config:/config
+      - ./certs:/certs:ro
+
   minio:
     image: docker.m.daocloud.io/minio/minio:RELEASE.2025-04-08T15-41-24Z
     container_name: minio
@@ -93,6 +107,7 @@ services:
     container_name: fall_chat_backend
     ports:
       - "8080:8080"
+      - "50051:50051"
     environment:
       DB_HOST: mysql8
       DB_PORT: 3306
