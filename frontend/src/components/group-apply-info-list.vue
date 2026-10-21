@@ -39,7 +39,7 @@
                 </li>
                 <li>
                   时间：
-                  {{ item.created_at }}
+                  {{ parseTime(item.created_at) }}
                 </li>
               </ul>
               <div v-if="!item.sender && item.status === 'pending'">
@@ -56,8 +56,9 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { FlScrollBar, FlTabs, FlTabPane, FlMenu, FlButton } from 'fall-ui';
-import { handleGroupRequestApi, searchGroupRequestApi } from '@/api/social';
+import { listGroupRequestApi, handleGroupRequestApi } from '@/api/group_request'
 import Avatar from './avatar.vue';
+import { parseTime } from '@/utils/timeinfo';
 
 const activeStatus = ref('all')
 
@@ -108,7 +109,7 @@ const fetchApplyInfo = async (status = []) => {
     filter_status: status
   }
 
-  const result = await searchGroupRequestApi(data)
+  const result = await listGroupRequestApi(data)
   groupApplyData.value = result ?? []
 }
 

@@ -1,0 +1,10 @@
+-X POST
+
+url = http://localhost:8080/api/v1/friendRequest/apply
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkOTkzMTBiZGJjYSIsInVzZXJuYW1lIjoid2FuZ3d1IiwiZGV2aWNlX2lkIjoiIiwianRpIjoiIiwidHlwZSI6ImFjY2VzcyIsImlzcyI6ImZhbGwtY2hhdCIsImV4cCI6MTc5MjUwMDQyNiwibmJmIjoxNzkyNDk4NjI2LCJpYXQiOjE3OTI0OTg2MjZ9.rXjE5YXz6VQwn1Jjc2j1HlDAqLVgXVBuD1UrlEYGIkU"
+
+-d @apply-req.json
+-o apply-res.json

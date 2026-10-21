@@ -56,10 +56,14 @@ func doRegister() {
 	register(NewAuthController("AuthController"))
 	register(NewGroupInfoController("GroupInfoController"))
 	register(NewFileController("FileController"))
-	register(NewSocialController("SocialController"))
+	// register(NewSocialController("SocialController"))
 	register(NewWSController("WSController"))
 	register(NewConversationController("ConversationController"))
 	register(NewConversationMemberController("ConversationMemberController"))
+	register(NewSearchController("SearchController"))
+	register(NewFriendshipController("FriendshipController"))
+	register(NewFriendshipRequestController("FriendshipRequestController"))
+	register(NewGroupRequestController("RequestController"))
 }
 
 func doSetRoute(r fiber.Router) {

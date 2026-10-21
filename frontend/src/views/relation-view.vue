@@ -1,55 +1,60 @@
 <template>
-  <fl-row>
-    <fl-col :span="18">
-      <fl-container>
-        <fl-header>
-          <p style="text-align:center;color:gray;font-size:14px;">好友</p>
-        </fl-header>
-        <fl-main>
-          <fl-menu @select="handleSelect" :data="friends" width="100%">
-            <template #icon="{ item }">
-              <Avatar :uri="item.avatar"></Avatar>
-            </template>
-            <template #title="{ item }">
-              <div>
-                <div>
-                  <template v-if="item.remark">
-                    {{ item.remark }}
-                  </template>
-                  <template v-else>
-                    {{ item.nickname }}
-                  </template>
-                </div>
-                <div style="font-size:12px;color:gray;">来自：
-                  <template v-if="item.source === 'search'">搜索</template>
-                </div>
-              </div>
-            </template>
-          </fl-menu>
-        </fl-main>
-      </fl-container>
-      <fl-container>
-        <fl-header>
-          <p style="text-align:center;color:gray;font-size:14px;">群</p>
-        </fl-header>
-        <fl-main>
-          <fl-menu @select="selectGroup" :data="groups" width="100%">
-            <template #icon="{ item }">
-              <Avatar :uri="item.avatar"></Avatar>
-            </template>
-            <template #title="{ item }">
-              <div style="padding-left: 20px;">
-                <div>
-                  {{ item.name }}
-                </div>
-                <div style="font-size:12px;color:gray;">描述：
-                  {{ item.description }}
-                </div>
-              </div>
-            </template>
-          </fl-menu>
-        </fl-main>
-      </fl-container>
+  <fl-row style="height:100%;">
+    <fl-col :span="18" style="height:100%;">
+      <fl-scrollbar @resize="handleResize">
+        <div :style="{ width: `${width}px` }">
+          <fl-container>
+            <fl-header>
+              <p style="text-align:center;color:gray;font-size:14px;">好友</p>
+            </fl-header>
+            <fl-main>
+              <fl-menu @select="handleSelect" :data="friends" width="100%">
+                <template #icon="{ item }">
+                  <Avatar :uri="item.avatar"></Avatar>
+                </template>
+                <template #title="{ item }">
+                  <div>
+                    <div>
+                      <template v-if="item.remark">
+                        {{ item.remark }}
+                      </template>
+                      <template v-else>
+                        {{ item.nickname }}
+                      </template>
+                    </div>
+                    <div style="font-size:12px;color:gray;">来自：
+                      <template v-if="item.source === 'search'">搜索</template>
+                    </div>
+                  </div>
+                </template>
+              </fl-menu>
+            </fl-main>
+          </fl-container>
+          <fl-container>
+            <fl-header>
+              <p style="text-align:center;color:gray;font-size:14px;">群</p>
+            </fl-header>
+            <fl-main>
+              <fl-menu @select="selectGroup" :data="groups" width="100%">
+                <template #icon="{ item }">
+                  <Avatar :uri="item.avatar"></Avatar>
+                </template>
+                <template #title="{ item }">
+                  <div>
+                    <div>
+                      {{ item.name }}
+                    </div>
+                    <div style="font-size:12px;color:gray;">描述：
+                      {{ item.description }}
+                    </div>
+                  </div>
+                </template>
+              </fl-menu>
+            </fl-main>
+          </fl-container>
+
+        </div>
+      </fl-scrollbar>
     </fl-col>
 
     <fl-col :span="6">
@@ -64,7 +69,7 @@
 
 <script setup>
 import { groupsApi } from '@/api/group'
-import { friendshipListApi } from '@/api/social'
+import { friendshipListApi } from '@/api/friendship'
 import router from '@/router'
 import { onMounted, ref } from 'vue'
 import { useConversationStore } from '@/stores/conversation_store'
@@ -74,6 +79,15 @@ const convStore = useConversationStore()
 
 const friends = ref([])
 const groups = ref([])
+
+const width = ref(0)
+const height = ref(0)
+
+const handleResize = ({ clientWidth, clientHeight }) => {
+  width.value = clientWidth
+  height.value = clientHeight
+  console.log(clientWidth, clientHeight)
+}
 
 const fetchFriends = async () => {
   const data = await friendshipListApi()

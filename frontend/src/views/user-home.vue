@@ -29,7 +29,7 @@
         <fl-button v-else text disabled type="error">禁用</fl-button>
       </fl-form-item>
       <fl-form-item label="加入时间">
-        <fl-button link type="success">{{ formData.created_at }}</fl-button>
+        <fl-button link type="success">{{ parseTime(formData.created_at) }}</fl-button>
       </fl-form-item>
       <fl-form-item>
         <fl-button type="primary" @click="handleProfile">确定</fl-button>
@@ -46,6 +46,7 @@ import { FlMessageBox, FlInput } from 'fall-ui';
 import { uploadFile } from '@/utils/file_upload';
 import { refreshApi } from '@/api/auth';
 import { useUserStore } from '@/stores/user_info';
+import { parseTime } from '@/utils/timeinfo';
 const userStore = useUserStore()
 
 const formRef = ref(null)

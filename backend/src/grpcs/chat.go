@@ -11,7 +11,7 @@ import (
 
 type ChatServer struct {
 	chatpt.UnimplementedChatServer
-	wsService *service.WsService
+	wsService *service.Ws
 }
 
 func NewChatServer() *ChatServer {
@@ -21,7 +21,7 @@ func NewChatServer() *ChatServer {
 }
 
 func (s *ChatServer) Inject() {
-	wsService := service.GlobalService[service.WS_SERVICE_NAME].(*service.WsService)
+	wsService := service.GlobalService[service.WS_SERVICE_NAME].(*service.Ws)
 	s.wsService = wsService
 }
 

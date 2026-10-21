@@ -17,3 +17,5 @@
 - redis: "github.com/redis/go-redis/v9"
 - kafka: "github.com/segmentio/kafka-go"
 - 日志轮转："github.com/lestrrat-go/file-rotatelogs"
+- grpc: google.golang.org/grpc
+- protobuf: google.golang.org/protobuf

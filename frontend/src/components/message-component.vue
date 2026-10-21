@@ -1,7 +1,7 @@
 <template>
   <div class="message-container">
     <div class="message-time">
-      {{ data.send_time }}
+      {{ parseTime(data.send_time) }}
     </div>
     <div :class="['message-body', { 'is-sender': self }]">
       <Avatar :uri="data.sender_avatar"></Avatar>
@@ -37,6 +37,7 @@ import { FlCheckCircle, FlCloseCircle } from 'fall-ui/icons'
 import Avatar from './avatar.vue';
 import { useWsStore } from '@/stores/ws_store';
 import { useConversationStore } from '@/stores/conversation_store';
+import { parseTime } from '@/utils/timeinfo';
 const wsStore = useWsStore()
 const convStore = useConversationStore()
 const props = defineProps({

@@ -1,6 +1,7 @@
 package taskmanager
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -37,7 +38,7 @@ func (tj *TestJob) Priority() int {
 	return tj.priority
 }
 
-func (tj *TestJob) Execute() error {
+func (tj *TestJob) Execute(context.Context) error {
 	fmt.Printf("执行任务: id[%d] priority[%d] count[%d]\n", tj.id, tj.priority, tj.count)
 	return nil
 }
@@ -105,7 +106,7 @@ func (rj *RetryJob) MaxRetries() int {
 	return 3
 }
 
-func (rj *RetryJob) Execute() error {
+func (rj *RetryJob) Execute(context.Context) error {
 	fmt.Println("执行任务，模拟报错")
 
 	if rj.RetryCount() < rj.MaxRetries() {
@@ -199,7 +200,7 @@ func (rj *ReplaceJob) MaxRetries() int {
 	return 0
 }
 
-func (rj *ReplaceJob) Execute() error {
+func (rj *ReplaceJob) Execute(context.Context) error {
 	fmt.Printf("执行任务 seq[%d]\n", rj.seq)
 	return nil
 }

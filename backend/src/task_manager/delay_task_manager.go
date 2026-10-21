@@ -17,14 +17,14 @@ import (
 
 // 1.通用任务接口
 type Job interface {
-	Key() string                // 任务唯一键
-	Delay() time.Duration       // 延迟执行时间
-	Priority() int              // 任务的优先级,越小越高(0=紧急 1=普通)
-	Execute() error             // 任务逻辑
-	ShouldReplace(old Job) bool // 是否要取代前面的任务, false则被丢弃
-	OnComplete()                // 任务完成后执行
-	RetryCount() int            // 重试次数
-	MaxRetries() int            // 最大重试次数
+	Key() string                   // 任务唯一键
+	Delay() time.Duration          // 延迟执行时间
+	Priority() int                 // 任务的优先级,越小越高(0=紧急 1=普通)
+	Execute(context.Context) error // 任务逻辑
+	ShouldReplace(old Job) bool    // 是否要取代前面的任务, false则被丢弃
+	OnComplete()                   // 任务完成后执行
+	RetryCount() int               // 重试次数
+	MaxRetries() int               // 最大重试次数
 }
 
 // 2. 防抖实体
@@ -45,7 +45,7 @@ type DelayedTaskManager struct {
 }
 
 // 执行器（接收任务，防抖，执行）
-func (m *DelayedTaskManager) StartExecuter() {
+func (m *DelayedTaskManager) StartExecuter(ctx context.Context) {
 	for {
 		select {
 		case job, ok := <-m.execChan:
@@ -53,7 +53,7 @@ func (m *DelayedTaskManager) StartExecuter() {
 				utils.LogWarn("TaskManager execute channel closed")
 				return
 			}
-			m.handleJob(job)
+			m.handleJob(ctx, job)
 		case <-m.ctx.Done():
 			return
 		}
@@ -61,7 +61,7 @@ func (m *DelayedTaskManager) StartExecuter() {
 }
 
 // 由执行器调用
-func (m *DelayedTaskManager) handleJob(job Job) {
+func (m *DelayedTaskManager) handleJob(ctx context.Context, job Job) {
 	key := job.Key()
 
 	// 防抖，取消旧任务，执行新任务
@@ -79,7 +79,7 @@ func (m *DelayedTaskManager) handleJob(job Job) {
 
 	// 设置新定时任务
 	timer := time.AfterFunc(job.Delay(), func() {
-		go m.safeExecute(job)
+		go m.safeExecute(ctx, job)
 		m.debounceMap.Delete(key)
 	})
 
@@ -90,7 +90,7 @@ func (m *DelayedTaskManager) handleJob(job Job) {
 }
 
 // 安全执行任务，捕获panic, 执行重试
-func (m *DelayedTaskManager) safeExecute(job Job) {
+func (m *DelayedTaskManager) safeExecute(ctx context.Context, job Job) {
 	var err error
 
 	defer func() {
@@ -100,7 +100,7 @@ func (m *DelayedTaskManager) safeExecute(job Job) {
 		}
 	}()
 
-	err = job.Execute()
+	err = job.Execute(ctx)
 	if err != nil {
 		m.handleRetry(job, err)
 	} else {

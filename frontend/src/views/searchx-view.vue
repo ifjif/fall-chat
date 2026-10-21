@@ -58,9 +58,9 @@
   <CreateGroupModal v-model="createGroupPanelVisible"></CreateGroupModal>
 </template>
 <script setup>
-import { fileAccessUrlApi } from '@/api/file'
-import { applyAddFriendApi, applyAddGroupApi } from '@/api/social'
-import { searchApi } from '@/api/user'
+import { applyAddFriendApi } from '@/api/friendship_request'
+import { applyAddGroupApi } from '@/api/group_request'
+import { searchUserOrGroupApi } from '@/api/search'
 import CreateGroupModal from '@/components/modal/create-group-modal.vue'
 import { FlDrawer, FlMessageBox, FlTextarea } from 'fall-ui'
 import { FlSearch } from 'fall-ui/icons'
@@ -84,7 +84,7 @@ const doSearch = async () => {
     return
   }
   try {
-    const result = await searchApi({ name: searchName.value, nextCursor })
+    const result = await searchUserOrGroupApi({ name: searchName.value, nextCursor })
     nextCursor = result.next_cursor
     data.value = result?.result ?? []
   } catch (err) { }

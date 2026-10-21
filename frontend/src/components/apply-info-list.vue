@@ -34,7 +34,7 @@
                   </template>
                 </li>
                 <li>
-                  时间：{{ item.created_at }}
+                  时间：{{ parseTime(item.created_at) }}
                 </li>
               </ul>
               <div v-if="!item.sender && item.status === 'pending'">
@@ -51,11 +51,11 @@
 </template>
 
 <script setup>
-import { fileAccessUrlApi } from '@/api/file';
-import { handleFriendRequestApi, searchFriendRequestApi } from '@/api/social';
+import { listFriendRequestApi, handleFriendRequestApi } from '@/api/friendship_request'
 import { FlMenu, FlScrollBar, FlButton, FlTabs, FlTabPane } from 'fall-ui';
 import { onMounted, ref, watch } from 'vue'
 import Avatar from './avatar.vue';
+import { parseTime } from '@/utils/timeinfo';
 const activeTab = ref('all')
 
 const menuData = ref([])
@@ -102,7 +102,7 @@ const fetchApplyInfo = async (status = []) => {
   const data = {
     filter_status: status
   }
-  const result = await searchFriendRequestApi(data)
+  const result = await listFriendRequestApi(data)
   menuData.value = result
 }
 

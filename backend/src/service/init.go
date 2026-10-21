@@ -7,11 +7,15 @@ const (
 	EMAIL_SERVICE_NAME               = "EmailService"
 	GROUP_SERVICE_NAME               = "GroupService"
 	FILE_SERVICE_NAME                = "FileService"
-	SOCIAL_SERVICE_NAME              = "SocialService"
 	WS_SERVICE_NAME                  = "WsService"
 	CONVERSATION_SERVICE_NAME        = "ConversationService"
 	MESSAGE_SEQ_SERVICE_NAME         = "MessageSeqService"
 	CONVERSATION_MEMBER_SERVICE_NAME = "ConversationMemberService"
+	SEARCH_SERVICE_NAME              = "SearchService"
+	FRIENDSHIP_SERVICE_NAME          = "FriendshipService"
+	FRIENDSHIPREQUEST_SERVICE_NAME   = "FriendshipRequestService"
+	GROUPREQUEST_SERVICE_NAME        = "GroupRequestService"
+	GROUPMEMBER_SERVICE_NAME         = "GroupMemberService"
 )
 
 func Init() {
@@ -24,15 +28,19 @@ func register(service Service) {
 }
 
 func doRegister() {
-	register(NewUserService(USER_SERVICE_NAME))
-	register(NewEmailService(EMAIL_SERVICE_NAME))
-	register(NewGroupService(GROUP_SERVICE_NAME))
-	register(NewFileService(FILE_SERVICE_NAME))
-	register(NewSocialService(SOCIAL_SERVICE_NAME))
-	register(NewWsService(WS_SERVICE_NAME))
-	register(NewConversationService(CONVERSATION_SERVICE_NAME))
-	register(NewMessageSeqService(MESSAGE_SEQ_SERVICE_NAME))
-	register(NewConversationMemberService(CONVERSATION_MEMBER_SERVICE_NAME))
+	register(NewUser(USER_SERVICE_NAME))
+	register(NewEmail(EMAIL_SERVICE_NAME))
+	register(NewGroup(GROUP_SERVICE_NAME))
+	register(NewFile(FILE_SERVICE_NAME))
+	register(NewWs(WS_SERVICE_NAME))
+	register(NewConversation(CONVERSATION_SERVICE_NAME))
+	register(NewMessageSeq(MESSAGE_SEQ_SERVICE_NAME))
+	register(NewConversationMember(CONVERSATION_MEMBER_SERVICE_NAME))
+	register(NewSearch(SEARCH_SERVICE_NAME))
+	register(NewFriendship(FRIENDSHIP_SERVICE_NAME))
+	register(NewFriendshipRequest(FRIENDSHIPREQUEST_SERVICE_NAME))
+	register(NewGroupRequest(GROUPREQUEST_SERVICE_NAME))
+	register(NewGroupMember(GROUPMEMBER_SERVICE_NAME))
 }
 
 func doInject() {

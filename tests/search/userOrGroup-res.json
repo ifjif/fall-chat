@@ -1,0 +1,17 @@
+{
+  "code": 200,
+  "message": "",
+  "data": {
+    "result": [
+      {
+        "type": "user",
+        "id": "7aeabd8c21cbdbca",
+        "name": "lishi",
+        "avatar": "files/80fea4a632bb159ef84be63a4ae25a2d/avatar55.webp",
+        "nickname": "我是李四",
+        "relation_status": "already_friend"
+      }
+    ],
+    "next_cursor": "end_end"
+  }
+}

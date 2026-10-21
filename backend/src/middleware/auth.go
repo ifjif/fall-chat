@@ -5,7 +5,7 @@ import (
 	"strings"
 	"zzc/fall-chat/src/errs"
 	"zzc/fall-chat/src/keys/ctxkey"
-	"zzc/fall-chat/src/pkg/resp"
+	"zzc/fall-chat/src/resp"
 	"zzc/fall-chat/src/utils"
 
 	"github.com/gofiber/fiber/v3"

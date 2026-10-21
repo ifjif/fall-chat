@@ -17,7 +17,7 @@
               {{ item.name }}
             </span>
             <span style="font-size: 10px;">
-              {{ item.last_msg_time }}
+              {{ parseTime(item.last_msg_time) }}
             </span>
           </div>
           <div style="font-size: 12px;
@@ -36,6 +36,7 @@ import { computed } from 'vue'
 import { useConversationStore } from '@/stores/conversation_store'
 import Avatar from '@/components/avatar.vue'
 import Bedge from '@/components/bedge.vue'
+import { parseTime } from '@/utils/timeinfo'
 const convStore = useConversationStore()
 const active = computed(() => convStore.getActiveConv().id)
 

@@ -7,3 +7,4 @@ export const createGroupApi = (data) => {
 export const groupsApi = (data) => {
   return http.post("/groupInfo/groups", data)
 }
+

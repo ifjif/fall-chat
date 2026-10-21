@@ -8,7 +8,6 @@ export const forgetPasswordApi = (data) => {
   return http.post('/user/forgetPassword', data)
 }
 
-
 export const registerApi = (data) => {
   return http.post('/user/register', data)
 }
@@ -19,10 +18,6 @@ export const resetPasswordApi = (data) => {
 
 export const updateProfileApi = (data) => {
   return http.post('/user/updateProfile', data)
-}
-
-export const searchApi = (data) => {
-  return http.post("/user/search", data)
 }
 
 export const userProfileApi = () => {

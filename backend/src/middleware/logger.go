@@ -17,7 +17,7 @@ func LoggerMiddleware(c fiber.Ctx) error {
 	status := c.Response().StatusCode()
 	logMsg := "HTTP Request"
 
-	reqLogger := ctxkey.GetLogger(c)
+	reqLogger := ctxkey.GetLogger(c.Context())
 
 	commonFields := []any{
 		"method", c.Method(),

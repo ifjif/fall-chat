@@ -1,0 +1,10 @@
+-X POST
+
+url = http://localhost:8080/api/v1/groupRequest/apply
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzkyNDk4NzMxLCJuYmYiOjE3OTI0OTY5MzEsImlhdCI6MTc5MjQ5NjkzMX0.6Cv9D-y8lX5FAUuhJnTbZnN51F2Ra3pZqYsybfnqXiU"
+
+-d @apply-req.json
+-o apply-res.json

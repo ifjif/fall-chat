@@ -30,7 +30,7 @@ func initDelayTaskMananger() {
 	sort.Ints(TaskManager.sortedPriorities)
 
 	// 启动执行器
-	go TaskManager.StartExecuter()
+	go TaskManager.StartExecuter(ctx)
 	// 启动调度器
 	go TaskManager.StartDispatcher()
 }

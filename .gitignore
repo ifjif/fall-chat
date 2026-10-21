@@ -1,5 +1,5 @@
 /data/
-store/
+/store/
 rs_store/
 logs/
 .env
@@ -26,3 +26,4 @@ grpc.md
 debounce_delay_task.md
 1.txt
 /conf/caddy_config
+deliverer.md
