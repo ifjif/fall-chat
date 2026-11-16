@@ -50,22 +50,6 @@ func register(controller Controller) {
 	GlobalController[controller.Name()] = controller
 }
 
-func doRegister() {
-	register(NewUserController("UserController"))
-	register(NewEmailController("EmailController"))
-	register(NewAuthController("AuthController"))
-	register(NewGroupInfoController("GroupInfoController"))
-	register(NewFileController("FileController"))
-	// register(NewSocialController("SocialController"))
-	register(NewWSController("WSController"))
-	register(NewConversationController("ConversationController"))
-	register(NewConversationMemberController("ConversationMemberController"))
-	register(NewSearchController("SearchController"))
-	register(NewFriendshipController("FriendshipController"))
-	register(NewFriendshipRequestController("FriendshipRequestController"))
-	register(NewGroupRequestController("RequestController"))
-}
-
 func doSetRoute(r fiber.Router) {
 	for _, c := range GlobalController {
 		c.SetRoute(r)
@@ -76,4 +60,22 @@ func doInject() {
 	for _, c := range GlobalController {
 		c.Inject()
 	}
+}
+
+func doRegister() {
+	register(NewUser("UserController"))
+	register(NewEmail("EmailController"))
+	register(NewAuth("AuthController"))
+	register(NewGroupInfo("GroupInfoController"))
+	register(NewFile("FileController"))
+	register(NewWS("WSController"))
+	register(NewConversation("ConversationController"))
+	register(NewConversationMember("ConversationMemberController"))
+	register(NewSearch("SearchController"))
+	register(NewFriendship("FriendshipController"))
+	register(NewFriendshipRequest("FriendshipRequestController"))
+	register(NewGroupRequest("RequestController"))
+	register(NewIMMessage("IMMessageController"))
+	register(NewEmoji("EmojiController"))
+	register(NewRTCController("RTCController"))
 }

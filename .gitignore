@@ -1,3 +1,5 @@
+/deploy/
+deploy.md
 /data/
 /store/
 rs_store/
@@ -27,3 +29,6 @@ debounce_delay_task.md
 1.txt
 /conf/caddy_config
 deliverer.md
+page_cursor.md
+go-nil.md
+todo.md

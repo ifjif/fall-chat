@@ -2,9 +2,12 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"zzc/fall-chat/src/data/executor"
 	"zzc/fall-chat/src/model"
+
+	"gorm.io/gorm"
 )
 
 type ConvMembDao interface {
@@ -19,7 +22,12 @@ type ConvMembDao interface {
 	ListBriefBatchByConvIDAndMemberIDs(ctx context.Context, convID int64, memberIDs []int64) ([]model.IMConvMembBriefRow, error)
 
 	// 更新最后读的消息seq
-	UpdateLastReadSeq(ctx context.Context, m *model.IMConversationMember) error
+	UpdateLastReadSeq(ctx context.Context, m *model.IMConversationMember) (bool, error)
+
+	FinsLastReadSeq(ctx context.Context, convID, userID int64) (int64, error)
+
+	// 存在会话
+	Exists(ctx context.Context, convID, userID int64) (bool, error)
 }
 
 type convMembDao struct {
@@ -88,8 +96,40 @@ func (dao *convMembDao) ListBriefBatchByConvIDAndMemberIDs(ctx context.Context, 
 	return rows, nil
 }
 
-func (dao *convMembDao) UpdateLastReadSeq(ctx context.Context, m *model.IMConversationMember) error {
-	return dao.db.Where("conv_id = ? and user_id = ? and last_read_seq < ? ", m.ConvID, m.UserID, m.LastReadSeq).
+func (dao *convMembDao) UpdateLastReadSeq(ctx context.Context, m *model.IMConversationMember) (bool, error) {
+	result := dao.db.Where("conv_id = ? and user_id = ? and last_read_seq < ? ", m.ConvID, m.UserID, m.LastReadSeq).
 		Select("last_read_seq", "last_read_msg_id").
-		Updates(m).Error
+		Updates(m)
+	if result.Error != nil {
+		return false, result.Error
+	}
+
+	return result.RowsAffected == 1, nil
+}
+
+func (dao *convMembDao) FinsLastReadSeq(ctx context.Context, convID, userID int64) (int64, error) {
+	var seq int64
+	err := dao.db.Where("conv_id = ? and user_id = ?", convID, userID).
+		Select("last_read_seq").
+		Take(&seq).Error
+	if err != nil {
+		seq = -1
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = nil
+		}
+	}
+
+	return seq, nil
+}
+
+func (dao *convMembDao) Exists(ctx context.Context, convID, userID int64) (bool, error) {
+	var exists int64
+	err := dao.db.Model(model.IMConversationMember{}).
+		Where("user_id = ? and conv_id = ?", userID, convID).
+		Count(&exists).Error
+	if err != nil {
+		return false, err
+	}
+
+	return exists == 1, nil
 }

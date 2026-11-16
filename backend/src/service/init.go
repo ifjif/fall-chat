@@ -16,6 +16,9 @@ const (
 	FRIENDSHIPREQUEST_SERVICE_NAME   = "FriendshipRequestService"
 	GROUPREQUEST_SERVICE_NAME        = "GroupRequestService"
 	GROUPMEMBER_SERVICE_NAME         = "GroupMemberService"
+	IMMESSAGE_SERVICE_NAME           = "IMMessageService"
+	EMOJI_SERVICE_NAME               = "EmojiService"
+	RTC_SERVICE_NAME                 = "RTCService"
 )
 
 func Init() {
@@ -25,6 +28,12 @@ func Init() {
 
 func register(service Service) {
 	GlobalService[service.Name()] = service
+}
+
+func doInject() {
+	for _, service := range GlobalService {
+		service.Inject()
+	}
 }
 
 func doRegister() {
@@ -41,10 +50,7 @@ func doRegister() {
 	register(NewFriendshipRequest(FRIENDSHIPREQUEST_SERVICE_NAME))
 	register(NewGroupRequest(GROUPREQUEST_SERVICE_NAME))
 	register(NewGroupMember(GROUPMEMBER_SERVICE_NAME))
-}
-
-func doInject() {
-	for _, service := range GlobalService {
-		service.Inject()
-	}
+	register(NewIMMessage(IMMESSAGE_SERVICE_NAME))
+	register(NewEmoji(EMOJI_SERVICE_NAME))
+	register(NewRTC(RTC_SERVICE_NAME))
 }

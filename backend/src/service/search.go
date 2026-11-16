@@ -62,10 +62,10 @@ func (ss *Search) UserOrGroup(ctx context.Context, qu *query.UserOrGroup) (*resp
 	}
 
 	if userCursor != "inf" && userCursor != "end" {
-		lastUserID, _ = ss.sf.Decode(userCursor)
+		lastUserID, _ = model.DecodeID(userCursor)
 	}
 	if groupCursor != "inf" && groupCursor != "end" {
-		lastGroupID, _ = ss.sf.Decode(groupCursor)
+		lastGroupID, _ = model.DecodeID(groupCursor)
 	}
 
 	finalResult := &response.UserOrGroupResult{}

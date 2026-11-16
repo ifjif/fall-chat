@@ -2,11 +2,17 @@ import { convListApi, convSingleApi } from "@/api/conversation"
 import { FindConvMembBriefJob } from "@/job/find_conv_memb_brief_job"
 import { delayTaskMananger } from "@/utils/task_manager"
 import { defineStore } from "pinia"
-import { nextTick, ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useUserStore } from "./user_info"
+import { listImMessageApi, patchListImMessageApi } from "@/api/im_message"
+import { getPreview } from "@/utils/im_message"
+import { convMembCommitReadApi } from "@/api/conversation_member"
 
 export const useConversationStore = defineStore('conversation', () => {
   // 
+  // 当不处于活跃会话时，新消息到达,unread_count会增加, 显示在用户会话头像上
+  // 当处于活跃会话是，新消息到达，unread_count,position.count会增加会,
+  //  position.count在聊天框底部展示有多少条新消息，点击可到达底部
   // conv {
   //  --会话基本信息--
   //      id: "7a895f6ce1cbdbca",
@@ -22,7 +28,15 @@ export const useConversationStore = defineStore('conversation', () => {
   //      last_read_seq: 2,
   //      unread_count: 0
   //
-  //  --会话中消息--
+  //      position: {
+  //        next: // 下次拉取的游标
+  //        has_next: // 是否还能拉
+  //        first: // 首次加载,
+  //        top: // 滚动到顶部是
+  //        cout: // 新消息,但未滚动到底部的数量
+  //      }
+  //
+  //  --会话中消息--  最前的seq小，最后的seq大
   //      messages:[
   //        {
   //          id: 
@@ -36,7 +50,7 @@ export const useConversationStore = defineStore('conversation', () => {
   //          sender_name:
   //          sender_avatar:
   //          conv_id:
-  //          peer_id;
+  //          peer_id;       // 发送消息时，失败后重发需要它。拉取消息不需要它
   //        }
   //      ]
   //
@@ -66,6 +80,130 @@ export const useConversationStore = defineStore('conversation', () => {
     }
   }
 
+  function findNewSeq() {
+    const conv = activeconversation.value
+    let last_msg_seq = conv.last_msg_seq
+    let next = conv.position.next
+    let has_next = conv.position.has_next
+
+    // 当前存在的消息中，最新的seq
+    let latest_msg_seq = conv.messages?.[conv.messages.length - 1].seq || 0
+
+    console.log(latest_msg_seq, next, has_next)
+
+    if (last_msg_seq === latest_msg_seq) {
+      return {
+        hasNew: false,
+        next,
+        has_next
+      }
+    }
+    const count = last_msg_seq - latest_msg_seq // 还未拉取的数量
+    const first = latest_msg_seq === 0 || count > 40 // 拉最新
+
+    if (first) {
+      next = conv.position.next = ""
+      has_next = conv.position.has_next = true
+      conv.messages = []
+    } else {
+      last_msg_seq = last_msg_seq + 1
+    }
+
+    return {
+      hasNew: true, // 是否有新消息
+      next, // next_cursor
+      has_next, // 是否还可以拉历史消息
+      last_msg_seq, // 最新消息seq
+      latest_msg_seq, // 已拉取的消息中最大seq
+    }
+  }
+
+  // 拉历史消息，或最新消息
+  // 如果都没有，不进行
+  async function pullMessage(id, top = false) {
+    const {
+      hasNew,
+      next,
+      has_next,
+      last_msg_seq,
+      latest_msg_seq,
+    } = findNewSeq()
+    // 拉顶部, 但没有了
+    if (top && !has_next) return
+
+    const data = {
+      conv_id: id,
+      sort_key: "seq_desc",
+      next,
+      max_seq: last_msg_seq,
+      min_seq: latest_msg_seq
+    }
+
+    console.log(data)
+
+    const canCommitRead = next === "" || hasNew
+    let result = null
+    top = top || next === ""
+    // 拉取会话消息
+    if (top) {
+      result = await listImMessageApi(data)
+      if (!result) {
+        return
+      }
+      activeconversation.value.position.next = result.next
+      activeconversation.value.position.has_next = result.has_next
+    } else if (hasNew) {
+      // 补新消息
+      const value = await patchListImMessageApi(data)
+      result = {
+        data: value
+      }
+      if (!result.data) {
+        result.data = result.data.reverse()
+      }
+    }
+
+    if (result?.data) {
+      for (const msg of result.data) {
+        addConversationMsg(id, msg, top)
+      }
+    }
+
+    if (canCommitRead) {
+      // 首次/patch，进行读提交
+      readCommit()
+    }
+  }
+
+  // 提交一个 会话成员的读
+  async function readCommit() {
+    const conv = getActiveConv()
+    const msg = getLatestMessage()
+    if (!msg || conv.last_read_seq === msg.seq) return
+    const data = {
+      conv_id: conv.id,
+      msg_id: msg.id,
+      msg_seq: msg.seq
+    }
+
+    try {
+      await convMembCommitReadApi(data)
+      const unreadCount = conv.unread_count
+      conv.last_read_seq = msg.seq
+      conv.unread_count = 0
+      console.log(unreadCount)
+    } catch {
+    }
+  }
+
+  // 获取活跃会话中最新的消息
+  function getLatestMessage() {
+    const conv = getActiveConv()
+    const len = conv.messages.length ?? 0
+    return len > 0 ? conv.messages[len - 1] : null
+  }
+
+
   // 从运程拉取用户所有会话
   async function pullConversation() {
     const result = await convListApi()
@@ -75,11 +213,29 @@ export const useConversationStore = defineStore('conversation', () => {
   }
 
   // 设置活跃会话
-  function setActiveConv(data) {
+  //
+  //   首次，拉最新的, seq是当前往后的
+  //   没有新消息，seq可以继续拉
+  //
+  //   有新消息，如果直接加入到本地，seq可继续使用
+  //
+  //   有新消息，没有直接加入到本地，需要新把新消息拉完，seq才可以继续使用
+  //      这个要注意，如果太多，不能一次性拉
+  //
+  //
+  async function setActiveConv(data) {
+    // 不需要设置next,has_next , 由请求时进行判断
+    if (!data.position) {
+      data.position = {
+        count: 0,
+      }
+    } else {
+      data.position.count = 0
+    }
     activeconversation.value = data
   }
 
-  // 得到获取会话
+  // 得到活跃会话
   function getActiveConv() {
     return activeconversation.value
   }
@@ -126,7 +282,11 @@ export const useConversationStore = defineStore('conversation', () => {
 
   // 移动正式会话到头
   function moveConvToFront(index) {
-    if (index === 0 || index >= conversations.value.length) return
+    if (index >= conversations.value.length) return
+    if (index === 0) {
+      setActiveConv(conversations.value[0])
+      return
+    }
     const [target] = conversations.value.splice(index, 1)
     conversations.value.unshift(target)
     setActiveConv(target)
@@ -134,7 +294,11 @@ export const useConversationStore = defineStore('conversation', () => {
 
   // 移动临时会话到头
   function moveTempConvToFront(index) {
-    if (index === 0 || index >= tempConversations.value.length) return
+    if (index >= tempConversations.value.length) return
+    if (index === 0) {
+      setActiveConv(tempConversations.value[0])
+      return
+    }
     const [target] = tempConversations.value.splice(index, 1)
     tempConversations.value.unshift(target)
     setActiveConv(target)
@@ -167,30 +331,58 @@ export const useConversationStore = defineStore('conversation', () => {
 
 
   // msg {
-  //    id
-  //    msg_type
-  //    content 
-  //    send_time 
-  //    sender_id
-  //    status 
+  //    id: 
+  //    msg_type: 
+  //    content: 
+  //    send_time: 
+  //    sender_id: 
+  //    status: 
+  //    conv_type: 
+  //    conv_id: 
+  //    peer_id: 
   // }
-  function addConversationMsg(id, msg) {
-    let result = addMsgToTempConv(id, msg)
-    if (result === -1) {
-      addMsgToRealConv(id, msg)
+  function addConversationMsg(id, msg, top) {
+    if (top) {
+      addConversationMsg2Head(id, msg)
+    } else {
+      addConversationMsg2Tail(id, msg)
     }
     dispatch('messageAppend')
   }
 
-  // 首次会话 自己发送消息
-  function addMsgToTempConv(id, msg) {
-    msg.sender_name = useUserStore().getNickname()
-    msg.sender_avatar = useUserStore().getAvatar()
+  // true 表示添加到head
+  function addMsg2Head(messages, msg) {
+    messages.unshift(msg)
+    return true
+  }
+  function addMsg2Tail(messages, msg) {
+    messages.push(msg)
+    return false
+  }
 
+  function addConversationMsg2Tail(id, msg) {
+    let result = addMsgToTempConv(id, msg, addMsg2Tail)
+    if (result === -1) {
+      addMsgToRealConv(id, msg, addMsg2Tail)
+    }
+  }
+
+  function addConversationMsg2Head(id, msg) {
+    let result = addMsgToTempConv(id, msg, addMsg2Head)
+    if (result === -1) {
+      addMsgToRealConv(id, msg, addMsg2Head)
+    }
+  }
+
+  // 首次会话 自己发送消息
+  function addMsgToTempConv(id, msg, addMsgFn) {
     const index = findConversationByTemp(id)
     if (index !== -1) {
+      msg.sender_name = useUserStore().getNickname()
+      msg.sender_avatar = useUserStore().getAvatar()
+
       if (!tempConversations.value[index].messages) tempConversations.value[index].messages = []
-      tempConversations.value[index].messages.push(msg)
+      addMsgFn(tempConversations.value[index].messages, msg)
     }
 
     return index
@@ -198,17 +390,18 @@ export const useConversationStore = defineStore('conversation', () => {
 
   // 为正式会话添加消息
   // 只有活跃的会话才进行
-  function addMsgToRealConv(id, msg) {
+  function addMsgToRealConv(id, msg, addMsgFn) {
     const index = findConversation(id)
     if (index !== -1) {
       if (!conversations.value[index].messages) conversations.value[index].messages = []
       let lastIndex = conversations.value[index].messages.length
-      conversations.value[index].messages.push(msg)
-
+      const head = addMsgFn(conversations.value[index].messages, msg)
+      if (head) {
+        lastIndex = 0
+      }
       let conv = conversations.value[index]
       let mm = conv.messages[lastIndex]
       addMessageUserInfo(conv, mm)
-
     }
 
     return index
@@ -217,14 +410,12 @@ export const useConversationStore = defineStore('conversation', () => {
   // job 完成回调
   function findConvMembBriefJobCallback(result, conv, messages) {
     if (!result) return
-    for (const message of messages) {
-      const senderID = message.sender_id
-      const member = result[senderID]
-      message.sender_name = member.in_group_nickname || member.nickname
-      message.sender_avatar = member.avatar
-    }
-
     conv.members = { ...conv.members, ...result }
+
+    for (const message of messages) {
+      // 回填，如果没有，再次找
+      addMessageUserInfo(conv, message)
+    }
   }
 
   // 为消息添加用户信息
@@ -266,14 +457,18 @@ export const useConversationStore = defineStore('conversation', () => {
       updateMessageIdAndStatus(targetMessage, {
         last_msg_id: data.last_msg_id,
         last_msg_send_time: data.last_msg_send_time,
+        seq: data.last_msg_seq,
         status: 'success'
       })
+
+      // 获取预览
+      const preview = getPreview(targetMessage.msg_type, targetMessage.content)
 
       // 更新会话最后一条消息信息
       updateConvLastMsg({
         conv_id: data.conv_id,
         last_msg_id: data.last_msg_id,
-        last_msg_preview: targetMessage.content,
+        last_msg_preview: preview,
         last_msg_time: data.last_msg_send_time,
         last_msg_sender_id: targetMessage.sender_id,
         last_msg_seq: data.last_msg_seq
@@ -284,17 +479,20 @@ export const useConversationStore = defineStore('conversation', () => {
     }
 
   }
+
   // 更新消息状态
   //
   // data {
   //    last_msg_id
   //    last_msg_send_time
+  //    seq
   //    success
   // }
   function updateMessageIdAndStatus(message, data) {
     message.id = data.last_msg_id
     message.send_time = data.last_msg_send_time
     message.status = data.status
+    message.seq = data.seq
   }
 
   // 更新会话最后一条消息信息
@@ -323,9 +521,10 @@ export const useConversationStore = defineStore('conversation', () => {
   }
 
   // 更新未读数
-  // 
   // last_read_seq
   // unread_count
+  //
+  // isSender[true: 更新会话last_msg_seq]
   //
   // unread_count = (new_seq - last_read_seq)
   function updateConvUnreadCount(id, last_msg_seq, isSender, index) {
@@ -343,7 +542,7 @@ export const useConversationStore = defineStore('conversation', () => {
   async function handleReplyMsg(data) {
     const msg = {
       id: data.last_msg_id,
-      msg_type: 0,
+      msg_type: data.msg_type,
       content: data.content,
       send_time: data.last_msg_send_time,
       sender_id: data.sender_id,
@@ -351,10 +550,11 @@ export const useConversationStore = defineStore('conversation', () => {
       status: 'success',
     }
 
+    const preview = getPreview(msg.msg_type, data.content)
     const updateConv = {
       conv_id: data.conv_id,
       last_msg_id: data.last_msg_id,
-      last_msg_preview: data.content,
+      last_msg_preview: preview,
       last_msg_sender_id: data.sender_id,
       last_msg_time: data.last_msg_send_time,
       last_msg_seq: data.last_msg_seq
@@ -383,10 +583,13 @@ export const useConversationStore = defineStore('conversation', () => {
 
     // 判断当前会话是否是活跃的，是 追加消息
     if (isActiveConv(data.conv_id)) {
-      addMsgToRealConv(data.conv_id, msg)
-      // 活跃清零
-      // todo 如果未在底部，可以寄一个临时的
-      updateConvUnreadCount(data.conv_id, updateConv.last_msg_seq, true, index)
+      activeconversation.value.position.first = false
+      activeconversation.value.position.top = false
+      // 聊天框底部展示 新到达数量
+      activeconversation.value.position.count += 1
+      addMsgToRealConv(data.conv_id, msg, addMsg2Tail)
+      // 会话列表中展示
+      updateConvUnreadCount(data.conv_id, updateConv.last_msg_seq, false, index)
     }
   }
 
@@ -432,7 +635,7 @@ export const useConversationStore = defineStore('conversation', () => {
   // }
   function generateMsg(data) {
     // 生成一个全局唯一的临时 ID
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
     data.client_msg_id = tempId
 
     const timestamp = Date.now()
@@ -467,8 +670,12 @@ export const useConversationStore = defineStore('conversation', () => {
     getActiveConv,
     getActiveConvType,
     updateConvLastMsg4ACK,
+    addConversationMsg,
     generateMsg,
     handleReplyMsg,
     handleChatError,
+    findNewSeq,
+    pullMessage,
+    readCommit,
   }
 })

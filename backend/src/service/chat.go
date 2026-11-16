@@ -8,8 +8,8 @@ import (
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
 	"zzc/fall-chat/src/mess"
-	"zzc/fall-chat/src/message_queue/producer"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/mq/producer"
 	"zzc/fall-chat/src/utils"
 )
 
@@ -49,6 +49,8 @@ func NewChat(
 //	}
 //
 // id => client.ID
+//
+// BUG:客户端连续发送消息，接收端有时会断
 func (cs *Chat) HandleChatMessage(ctx context.Context, clientID string, chatData *request.ChatData) error {
 	if clientID != chatData.From {
 		return cs.Wrap("", errs.ErrWSClientIDSenderIDNotMatch, "from", chatData.From)
@@ -62,11 +64,11 @@ func (cs *Chat) HandleChatMessage(ctx context.Context, clientID string, chatData
 		return cs.Wrap("", errs.ErrWSChatMessageType, "message_type", chatData.MsgType)
 	}
 
-	rawID, err := cs.sf.Decode(clientID)
+	rawID, err := model.DecodeID(clientID)
 	if err != nil {
 		return cs.Wrap("发送方id解码", err)
 	}
-	rawToID, err := cs.sf.Decode(chatData.To)
+	rawToID, err := model.DecodeID(chatData.To)
 	if err != nil {
 		return cs.Wrap("接受方id解码", err, "toID", chatData.To)
 	}
@@ -100,6 +102,8 @@ func (cs *Chat) HandleChatMessage(ctx context.Context, clientID string, chatData
 		if err != nil {
 			return cs.Wrap("创建后找用户会话", err, "to", chatData.To)
 		}
+
+		utils.LogDebug("单聊会话创建成功: %v", conv)
 	}
 
 	// 生成会话 next sequence
@@ -108,33 +112,27 @@ func (cs *Chat) HandleChatMessage(ctx context.Context, clientID string, chatData
 		return cs.Wrap("生成消息seq", err, "to", chatData.To)
 	}
 
-	preview := utils.TruncateBytes(chatData.Content, 256)
 	lastMessage := model.IMMessage{
+		ConvID:   int64(conv.ID),
 		SenderID: rawID,
 		Content:  chatData.Content,
 		SendTime: time.Now(),
 		MsgType:  int8(chatData.MsgType),
 		Seq:      newSeq,
 	}
-	err = utils.InjectID4Model(cs.sf, &lastMessage.Model)
+	err = model.InjectID(&lastMessage.Model)
 	if err != nil {
 		return cs.Wrap("生成消息id", err, "to", chatData.To)
 	}
 
 	// 更新会话 最后一条消息 异步
-	lastMessage.ConvID = int64(conv.ID)
-
-	updateConv := &model.IMConversation{}
-	updateConv.ID = conv.ID
-	updateConv.SetLastMessage(&lastMessage)
-
 	ucMess := mess.UpdateConv{
 		ConvID:      int64(conv.ID),
 		ConvType:    int(conv.ConvType),
 		PeerID:      rawToID,
 		MsgID:       int64(lastMessage.ID),
 		MsgSenderID: rawID,
-		MsgPreview:  preview,
+		MsgPreview:  lastMessage.GetPreview(),
 		MsgTime:     lastMessage.SendTime,
 		Seq:         lastMessage.Seq,
 	}
@@ -169,6 +167,7 @@ func (cs *Chat) HandleChatMessage(ctx context.Context, clientID string, chatData
 		SenderID: chatData.From,
 		Content:  chatData.Content,
 		MsgSeq:   lastMessage.Seq,
+		MsgType:  chatData.MsgType,
 	}
 
 	if temConv.IsGroupConType() {

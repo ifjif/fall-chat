@@ -26,6 +26,7 @@ type ChatReply struct {
 	SenderID string `json:"sender_id"`
 	Content  string `json:"content"`
 	MsgSeq   int64  `json:"msg_seq"`
+	MsgType  int    `json:"msg_type"`
 }
 type ChatErrData struct {
 	ConvID string `json:"conv_id"`

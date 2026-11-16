@@ -19,18 +19,18 @@ type ChatData struct {
 }
 
 type OfferData struct {
-	PeerID string `json:"peer_id"`
-	Offer  json.RawMessage
+	PeerID string          `json:"peer_id"`
+	Offer  json.RawMessage `json:"offer"`
 }
 
 type AnswerData struct {
-	PeerID string `json:"peer_id"`
-	Answer json.RawMessage
+	PeerID string          `json:"peer_id"`
+	Answer json.RawMessage `json:"answer"`
 }
 
 type CandidateData struct {
-	PeerID    string `json:"peer_id"`
-	Candidate json.RawMessage
+	PeerID    string          `json:"peer_id"`
+	Candidate json.RawMessage `json:"candidate"`
 }
 
 type JoinData struct {
@@ -39,8 +39,9 @@ type JoinData struct {
 }
 
 type InviteData struct {
-	RoomID string `json:"room_id"`
-	PeerID string `json:"peer_id"`
+	RoomID    string `json:"room_id"`
+	PeerID    string `json:"peer_id"`
+	InviterID string `json:"inviter_id"`
 }
 
 type LeaveData struct {

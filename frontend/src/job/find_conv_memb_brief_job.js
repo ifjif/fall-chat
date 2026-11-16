@@ -28,6 +28,7 @@ export class FindConvMembBriefJob {
 
   merge(job) {
     this.values.add(job.value)
+    this.messages.push(...job.messages)
   }
 
   async execute() {

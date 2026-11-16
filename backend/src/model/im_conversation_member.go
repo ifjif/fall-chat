@@ -11,7 +11,6 @@ package model
 * user_id bigint // 用户id
 * peer_id bigint // 对方id
 *
-* unread_count int // 用户的未读数
 * top_flag tinyint // 是否置顶：0-否 1-是
 * mute_flag tinyint // 是否免打扰: 0-否 1-是
 * last_read_seq bigint // 最后读的消息 序列号

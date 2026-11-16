@@ -1,0 +1,87 @@
+{
+  "code": 200,
+  "message": "",
+  "data": {
+    "data": [
+      {
+        "id": "7a42a9e09f4bdbca",
+        "name": "张三emoji4",
+        "cover_url": "files/e7ed51ae58e84c5cfe4a21dca017823e/feature-filter.png",
+        "owner_id": "7aeabdf9ad0bdbca",
+        "soruce": "system",
+        "price_type": "free",
+        "price": 0,
+        "status": "draft",
+        "created_at": "2026-11-02T05:11:58.035Z"
+      },
+      {
+        "id": "7a43f37e3a4bdbca",
+        "name": "王五emoji3",
+        "cover_url": "files/5d8e071bfcbae486a3d85ad3c77d4aff/avatar9.webp",
+        "owner_id": "7aeabd99310bdbca",
+        "soruce": "system",
+        "price_type": "free",
+        "price": 0,
+        "status": "draft",
+        "created_at": "2026-11-01T07:32:21.062Z"
+      },
+      {
+        "id": "7a43f36fb1cbdbca",
+        "name": "王五emoji2",
+        "cover_url": "files/1b99872187ce5003389b237d89010082/avatar8.webp",
+        "owner_id": "7aeabd99310bdbca",
+        "soruce": "system",
+        "price_type": "free",
+        "price": 0,
+        "status": "draft",
+        "created_at": "2026-11-01T07:32:03.176Z"
+      },
+      {
+        "id": "7a43f35e9ecbdbca",
+        "name": "王五emoji1",
+        "cover_url": "files/2f35158e9253e3ea9632a9aae27dd879/avatar7.webp",
+        "owner_id": "7aeabd99310bdbca",
+        "soruce": "system",
+        "price_type": "free",
+        "price": 0,
+        "status": "draft",
+        "created_at": "2026-11-01T07:31:47.669Z"
+      },
+      {
+        "id": "7a43fc42b88bdbca",
+        "name": "李四emoji4",
+        "cover_url": "files/26a9f029e430759b6a390df01c771749/avatar6.webp",
+        "owner_id": "7aeabd8c21cbdbca",
+        "soruce": "system",
+        "price_type": "free",
+        "price": 0,
+        "status": "draft",
+        "created_at": "2026-11-01T07:27:13.357Z"
+      },
+      {
+        "id": "7a43fcac038bdbca",
+        "name": "李四emoji3",
+        "cover_url": "files/6b96c388e11ef1c3afb6fa85e515f4fd/avatar5.webp",
+        "owner_id": "7aeabd8c21cbdbca",
+        "soruce": "system",
+        "price_type": "free",
+        "price": 0,
+        "status": "draft",
+        "created_at": "2026-11-01T07:26:38.881Z"
+      },
+      {
+        "id": "7a43fc8452cbdbca",
+        "name": "李四emoji2",
+        "cover_url": "files/36ba8c9b0a7c3067d41bb43d1cef5005/avatar4.webp",
+        "owner_id": "7aeabd8c21cbdbca",
+        "soruce": "system",
+        "price_type": "free",
+        "price": 0,
+        "status": "draft",
+        "created_at": "2026-11-01T07:26:14.117Z"
+      }
+    ],
+    "next": "eyJ2IjoxLCJwIjp7Imhhc19uZXh0IjpmYWxzZSwiaWQiOjExMDM5OTAwNTg3OTQzOTM2MH19",
+    "has_next": false
+  }
+}

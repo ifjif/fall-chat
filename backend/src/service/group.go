@@ -10,10 +10,9 @@ import (
 	"zzc/fall-chat/src/data/store"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/mess"
-	messagequeue "zzc/fall-chat/src/message_queue"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/mq"
 	"zzc/fall-chat/src/query"
-	"zzc/fall-chat/src/utils"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -38,7 +37,7 @@ func (gs *Group) Inject() {
 
 func (gs *Group) CreateGroup(ctx context.Context, cmd *command.CreateGroup) error {
 	groupInfo := model.GroupInfo{}
-	err := utils.InjectID4Model(gs.sf, &groupInfo.Model)
+	err := model.InjectID(&groupInfo.Model)
 	if err != nil {
 		return gs.Wrap("生成群ID", err, "id", cmd.CreatorID, "username", cmd.Username)
 	}
@@ -55,21 +54,21 @@ func (gs *Group) CreateGroup(ctx context.Context, cmd *command.CreateGroup) erro
 
 	// 群主
 	groupMember := model.GenerateCreatorGroupMember(int64(groupInfo.ID), cmd.CreatorID)
-	err = utils.InjectID4Model(gs.sf, &groupMember.Model)
+	err = model.InjectID(&groupMember.Model)
 	if err != nil {
 		return gs.Wrap("生成群成员ID", err, "username", cmd.Username)
 	}
 
 	// 群会话
 	groupConv := model.GenerateGroupConv(groupInfo.PublicID)
-	err = utils.InjectID4Model(gs.sf, &groupConv.Model)
+	err = model.InjectID(&groupConv.Model)
 	if err != nil {
 		return gs.Wrap("生成群会话ID", err, "username", cmd.Username)
 	}
 
 	// 群会话成员
 	groupConvMember := model.GenerateConvMember(int64(groupConv.ID), cmd.CreatorID, int64(groupInfo.ID))
-	err = utils.InjectID4Model(gs.sf, &groupConvMember.Model)
+	err = model.InjectID(&groupConvMember.Model)
 	if err != nil {
 		return gs.Wrap("生成群会话成员ID", err, "username", cmd.Username)
 	}
@@ -112,7 +111,7 @@ func (gs *Group) CreateGroup(ctx context.Context, cmd *command.CreateGroup) erro
 		UserID:  cmd.CreatorPublicID,
 	}
 	bv, _ := json.Marshal(v)
-	go messagequeue.KWriter().WriteMessages(context.Background(), kafka.Message{
+	go mq.KWriter().WriteMessages(context.Background(), kafka.Message{
 		Topic: "join-group",
 		Key:   []byte(groupInfo.PublicID),
 		Value: bv,

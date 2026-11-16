@@ -44,6 +44,7 @@
             </div>
           </template>
         </FlMenu>
+        <LoadingMore @click="nextPage" :cursor="nextCursor" :more="hasNext" :loading="loading"></LoadingMore>
       </FlScrollBar>
     </div>
   </div>
@@ -54,8 +55,9 @@
 import { listFriendRequestApi, handleFriendRequestApi } from '@/api/friendship_request'
 import { FlMenu, FlScrollBar, FlButton, FlTabs, FlTabPane } from 'fall-ui';
 import { onMounted, ref, watch } from 'vue'
-import Avatar from './avatar.vue';
+import Avatar from './common/avatar.vue';
 import { parseTime } from '@/utils/timeinfo';
+import LoadingMore from './common/loading-more.vue';
 const activeTab = ref('all')
 
 const menuData = ref([])
@@ -90,6 +92,8 @@ const statusList = ref([
 ])
 
 watch(() => activeTab.value, nv => {
+  nextCursor.value = ""
+  menuData.value = []
   fetchApplyInfo(statusValue[nv])
 })
 
@@ -98,12 +102,31 @@ const handleResize = ({ clientWidth, scrollWidth, clientHeight, scrollHeight }) 
   menuWidth.value = clientWidth
 }
 
+const nextCursor = ref("")
+const hasNext = ref(false)
+const loading = ref(false)
+
 const fetchApplyInfo = async (status = []) => {
   const data = {
-    filter_status: status
+    status: status,
+    next: nextCursor.value,
+    sort_key: "created_desc"
   }
+
   const result = await listFriendRequestApi(data)
-  menuData.value = result
+  if (result && result.data) {
+    menuData.value.push(...result.data)
+    nextCursor.value = result.next
+    hasNext.value = result.has_next
+  }
+
+}
+
+const nextPage = () => {
+  loading.value = true
+  fetchApplyInfo(statusValue[activeTab.value]).finally(() => {
+    loading.value = false
+  })
 }
 
 const handleApply = async (action, item) => {

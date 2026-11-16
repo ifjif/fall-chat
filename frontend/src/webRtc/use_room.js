@@ -1,21 +1,19 @@
 import { ref } from 'vue'
 export function useRoom() {
-  const roomId = ref('')
   const selfId = ref('')
+  const roomId = ref('')
   const remotePeers = ref([])
 
-  function join(id, uid) {
-    roomId.value = id
+  function create(rId, uid) {
+    roomId.value = rId
     selfId.value = uid
     remotePeers.value = []
   }
 
   function addRemote(peerId) {
-    if (!remotePeers.value.includes(peerId)) {
-      remotePeers.value.push(peerId)
-    }
+    if (remotePeers.value.includes(peerId)) return
+    remotePeers.value.push(peerId)
   }
-
   function removeRemote(peerId) {
     remotePeers.value = remotePeers.value.filter(id => id !== peerId)
   }
@@ -27,12 +25,12 @@ export function useRoom() {
   }
 
   return {
-    roomId,
     selfId,
+    roomId,
     remotePeers,
-    join,
-    leave,
+    create,
     addRemote,
-    removeRemote
+    removeRemote,
+    leave
   }
 }

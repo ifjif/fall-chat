@@ -9,11 +9,7 @@ import (
 )
 
 var (
-	SF           *SnowFlake
-	sfOnce       sync.Once
-	currentMID   int64
-	stopHearBeat chan struct{}
-
+	SF                     *SnowFlake
 	ErrClockMovedBackwards = errors.New("clock moved backwards, refusing to generate id")
 	ErrMachineIDOverflow   = errors.New("machineID must be between 0 and 1023")
 	ErrSequenceOverflow    = errors.New("sequence must be between 0 and 4095")

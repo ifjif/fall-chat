@@ -7,10 +7,12 @@ import (
 
 type ConvMembRepositories struct {
 	ConvMemb dao.ConvMembDao
+	ImMess   dao.IMMessageDao
 }
 
 func NewConvMembRepos(db executor.Executor) ConvMembRepositories {
 	return ConvMembRepositories{
 		ConvMemb: dao.NewConvMembDao(db),
+		ImMess:   dao.NewIMMessageDao(db),
 	}
 }

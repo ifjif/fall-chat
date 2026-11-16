@@ -1,1 +1,82 @@
-{"code":200,"message":"","data":[{"id":"7afb652318cbdbca","from_user_id":"7aeabd99310bdbca","to_user_id":"7aeabdf9ad0bdbca","sender":false,"message":"请求添加好友","status":"approved","avatar":"files/4e572590aeed9869812e9cd7eeb014a1/avatar33.webp","nickname":"王五xx","apply_type":"search","created_at":"2026-08-25T07:42:26.124Z"},{"id":"7afb656a358bdbca","from_user_id":"7aeabd99310bdbca","to_user_id":"7aeabdf9ad0bdbca","sender":false,"message":"我是王五","status":"rejected","avatar":"files/4e572590aeed9869812e9cd7eeb014a1/avatar33.webp","nickname":"王五xx","apply_type":"search","created_at":"2026-08-25T07:41:13.593Z"},{"id":"7afb65ade14bdbca","from_user_id":"7aeabdf9ad0bdbca","to_user_id":"7aeabd99310bdbca","sender":true,"message":"再吃添加好友，我是张三","status":"rejected","avatar":"files/4e572590aeed9869812e9cd7eeb014a1/avatar33.webp","nickname":"王五xx","apply_type":"search","created_at":"2026-08-25T07:40:12.331Z"},{"id":"7afb5784c74bdbca","from_user_id":"7aeabdf9ad0bdbca","to_user_id":"7aeabd99310bdbca","sender":true,"message":"你好王五，我是张三","status":"rejected","avatar":"files/4e572590aeed9869812e9cd7eeb014a1/avatar33.webp","nickname":"王五xx","apply_type":"search","created_at":"2026-08-25T06:21:10.067Z"},{"id":"7ae456846e4bdbca","from_user_id":"7aeabdf9ad0bdbca","to_user_id":"7aeabd8c21cbdbca","sender":true,"message":"你好李四，我是张三,再次申请","status":"approved","avatar":"files/80fea4a632bb159ef84be63a4ae25a2d/avatar55.webp","nickname":"我是李四","apply_type":"search","created_at":"2026-08-24T11:47:03.958Z"},{"id":"7ae5843e850bdbca","from_user_id":"7aeabdf9ad0bdbca","to_user_id":"7aeabd8c21cbdbca","sender":true,"message":"你好李四，我是张三","status":"rejected","avatar":"files/80fea4a632bb159ef84be63a4ae25a2d/avatar55.webp","nickname":"我是李四","apply_type":"search","created_at":"2026-08-23T11:30:37.5Z"}]}
+{
+  "code": 200,
+  "message": "",
+  "data": {
+    "data": [
+      {
+        "id": "7afb652318cbdbca",
+        "from_user_id": "7aeabd99310bdbca",
+        "to_user_id": "7aeabdf9ad0bdbca",
+        "sender": false,
+        "message": "请求添加好友",
+        "status": "approved",
+        "avatar": "files/4e572590aeed9869812e9cd7eeb014a1/avatar33.webp",
+        "nickname": "王五xx",
+        "apply_type": "search",
+        "created_at": "2026-08-25T07:42:26.124Z"
+      },
+      {
+        "id": "7afb656a358bdbca",
+        "from_user_id": "7aeabd99310bdbca",
+        "to_user_id": "7aeabdf9ad0bdbca",
+        "sender": false,
+        "message": "我是王五",
+        "status": "rejected",
+        "avatar": "files/4e572590aeed9869812e9cd7eeb014a1/avatar33.webp",
+        "nickname": "王五xx",
+        "apply_type": "search",
+        "created_at": "2026-08-25T07:41:13.593Z"
+      },
+      {
+        "id": "7afb65ade14bdbca",
+        "from_user_id": "7aeabdf9ad0bdbca",
+        "to_user_id": "7aeabd99310bdbca",
+        "sender": true,
+        "message": "再吃添加好友，我是张三",
+        "status": "rejected",
+        "avatar": "files/4e572590aeed9869812e9cd7eeb014a1/avatar33.webp",
+        "nickname": "王五xx",
+        "apply_type": "search",
+        "created_at": "2026-08-25T07:40:12.331Z"
+      },
+      {
+        "id": "7afb5784c74bdbca",
+        "from_user_id": "7aeabdf9ad0bdbca",
+        "to_user_id": "7aeabd99310bdbca",
+        "sender": true,
+        "message": "你好王五，我是张三",
+        "status": "rejected",
+        "avatar": "files/4e572590aeed9869812e9cd7eeb014a1/avatar33.webp",
+        "nickname": "王五xx",
+        "apply_type": "search",
+        "created_at": "2026-08-25T06:21:10.067Z"
+      },
+      {
+        "id": "7ae456846e4bdbca",
+        "from_user_id": "7aeabdf9ad0bdbca",
+        "to_user_id": "7aeabd8c21cbdbca",
+        "sender": true,
+        "message": "你好李四，我是张三,再次申请",
+        "status": "approved",
+        "avatar": "files/329c5e9ef9190d4655aecaa3dff8d2c4/截图 2026-10-07 12-51-16.png",
+        "nickname": "我是李四",
+        "apply_type": "search",
+        "created_at": "2026-08-24T11:47:03.958Z"
+      },
+      {
+        "id": "7ae5843e850bdbca",
+        "from_user_id": "7aeabdf9ad0bdbca",
+        "to_user_id": "7aeabd8c21cbdbca",
+        "sender": true,
+        "message": "你好李四，我是张三",
+        "status": "rejected",
+        "avatar": "files/329c5e9ef9190d4655aecaa3dff8d2c4/截图 2026-10-07 12-51-16.png",
+        "nickname": "我是李四",
+        "apply_type": "search",
+        "created_at": "2026-08-23T11:30:37.5Z"
+      }
+    ],
+    "next": "eyJ2IjoxLCJwIjp7Imhhc19uZXh0IjpmYWxzZSwiSUQiOjg1MDkzMzU3OTczNDA5NzkyfX0=",
+    "has_next": false
+  }
+}

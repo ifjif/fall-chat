@@ -108,7 +108,7 @@ func (dao *userDao) CountByUsername(ctx context.Context, username string) (int64
 }
 
 func (dao *userDao) CreateOne(ctx context.Context, user model.User) error {
-	return dao.db.Create(user).Error
+	return dao.db.Create(&user).Error
 }
 
 func (dao *userDao) UpdateOne(ctx context.Context, user model.User) error {

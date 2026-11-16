@@ -12,24 +12,24 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type GroupInfoController struct {
-	BaseController
+type GroupInfo struct {
+	Base
 	groupService *service.Group
 }
 
-func NewGroupInfoController(name string) *GroupInfoController {
-	bs := BaseController{name: name}
-	return &GroupInfoController{
-		BaseController: bs,
+func NewGroupInfo(name string) *GroupInfo {
+	bs := Base{name: name}
+	return &GroupInfo{
+		Base: bs,
 	}
 }
 
-func (gi *GroupInfoController) Inject() {
+func (gi *GroupInfo) Inject() {
 	gs := service.GlobalService[service.GROUP_SERVICE_NAME].(*service.Group)
 	gi.groupService = gs
 }
 
-func (gi *GroupInfoController) SetRoute(r fiber.Router) {
+func (gi *GroupInfo) SetRoute(r fiber.Router) {
 	group := r.Group("/groupInfo")
 	authGroup := group.Group("")
 	authGroup.Use(middleware.AuthMiddleware)
@@ -38,7 +38,7 @@ func (gi *GroupInfoController) SetRoute(r fiber.Router) {
 	authGroup.Post("/groups", gi.groups)
 }
 
-func (gic *GroupInfoController) createGroup(c fiber.Ctx) error {
+func (gic *GroupInfo) createGroup(c fiber.Ctx) error {
 	userID := ctxkey.GetUserID(c)
 	userPublicID := ctxkey.GetUserPubID(c)
 	username := ctxkey.GetUsername(c)
@@ -67,7 +67,7 @@ func (gic *GroupInfoController) createGroup(c fiber.Ctx) error {
 		JSON(nil)
 }
 
-func (gic *GroupInfoController) groups(c fiber.Ctx) error {
+func (gic *GroupInfo) groups(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 

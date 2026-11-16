@@ -9,10 +9,10 @@ import (
 	"zzc/fall-chat/src/data/store"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
-	"zzc/fall-chat/src/message_queue/consumer"
+	"zzc/fall-chat/src/keys/ctxkey"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/mq/consumer"
 	"zzc/fall-chat/src/query"
-	"zzc/fall-chat/src/utils"
 )
 
 type Conversation struct {
@@ -86,28 +86,25 @@ func (cs *Conversation) List(ctx context.Context, id int64, name string) ([]*res
 	for i := range rows {
 		row := rows[i]
 		v := converter.ToIMConversationResponse(row)
-		v.PeerID = cs.sf.Encode(row.PeerID)
+		v.PeerID = model.EncodeID(row.PeerID)
 		result = append(result, v)
 	}
 	return result, err
 }
 
 func (cs *Conversation) Single(ctx context.Context, qu *query.ConvSingle) (*response.IMConversation, error) {
+	logger := ctxkey.GetLogger(ctx)
 	// 携带
 	// peer_avatar
 	// peer_nickname
-
-	convID, err := cs.sf.Decode(qu.ConvID)
-	if err != nil {
-		return nil, cs.Wrap("会话id解码", err, "id", qu.ID)
-	}
+	convID := qu.ConvID
 
 	row, err := cs.store.
 		ConvRepos().
 		Conversation.
-		SingleByConvID(ctx, convID, qu.ID)
+		SingleByConvID(ctx, convID, qu.UserID)
 	if err != nil {
-		return nil, cs.Wrap("找用户的单条会话", err, "id", qu.ID, "conv_id", convID)
+		return nil, cs.Wrap("找用户的单条会话", err, "id", qu.UserID, "conv_id", convID)
 	}
 
 	// 没有会话
@@ -120,7 +117,7 @@ func (cs *Conversation) Single(ctx context.Context, qu *query.ConvSingle) (*resp
 		ConvCache().
 		AppendInfo(ctx, []*model.IMConversationRow{row})
 	if err != nil {
-		// TODO:
+		logger.Error("[redis]", "reason", "找会话额外信息失败", "error", err)
 	}
 
 	var ids []int64
@@ -135,21 +132,21 @@ func (cs *Conversation) Single(ctx context.Context, qu *query.ConvSingle) (*resp
 		Conversation.
 		GetUserOrGroupBaseInfoBatch(ctx, ids)
 	if err != nil {
-		// TODO:
+		logger.Error("[database]", "reason", "从数据库中找额外信息", "error", err)
 	}
 
 	if len(res) > 0 {
 		row.PeerAvatar = res[0].Avatar
 		row.PeerNickname = res[0].PeerNickname
+
+		// 设置缓存
+		cs.store.
+			ConvCache().
+			SetInfo(ctx, res)
 	}
 
-	// 设置缓存
-	cs.store.
-		ConvCache().
-		SetInfo(ctx, res)
-
 	result := converter.ToIMConversationResponse(row)
-	result.PeerID = cs.sf.Encode(row.PeerID)
+	result.PeerID = model.EncodeID(row.PeerID)
 	return result, nil
 }
 
@@ -165,7 +162,10 @@ func (cs *Conversation) FindBrief(ctx context.Context, singleKey string) (*model
 	}
 
 	// 从数据库
-	conv, err = cs.store.ConvRepos().Conversation.FindBriefBySingleKey(ctx, singleKey)
+	conv, err = cs.store.
+		ConvRepos().
+		Conversation.
+		FindBriefBySingleKey(ctx, singleKey)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (cs *Conversation) CreateSingleChat(ctx context.Context, id int64, toID int
 		SingleKey: singleKey,
 		ConvType:  int8(ConvType),
 	}
-	err := utils.InjectID4Model(cs.sf, &conv.Model)
+	err := model.InjectID(&conv.Model)
 	if err != nil {
 		return cs.Wrap("生成会话id", err, "to", toID)
 	}
@@ -221,7 +221,7 @@ func (cs *Conversation) CreateSingleChat(ctx context.Context, id int64, toID int
 
 	// 发送者
 	ma := model.GenerateConvMember(int64(conv.ID), id, toID)
-	err = utils.InjectID4Model(cs.sf, &ma.Model)
+	err = model.InjectID(&ma.Model)
 	if err != nil {
 		return cs.Wrap("生成发送者成员id", err)
 	}
@@ -229,7 +229,7 @@ func (cs *Conversation) CreateSingleChat(ctx context.Context, id int64, toID int
 
 	// 接收者
 	mb := model.GenerateConvMember(int64(conv.ID), toID, id)
-	err = utils.InjectID4Model(cs.sf, &mb.Model)
+	err = model.InjectID(&mb.Model)
 	if err != nil {
 		return cs.Wrap("生成接收者成员id", err, "to", toID)
 	}

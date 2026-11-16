@@ -53,7 +53,7 @@ func (imc *IMConversation) IsInvalidConvType() bool {
 
 func (imc *IMConversation) SetLastMessage(lm *IMMessage) {
 	imc.LastMsgID = int64(lm.ID)
-	imc.LastMsgPreview = lm.Content // TODO:根据类型进行设置
+	imc.LastMsgPreview = lm.GetPreview()
 	imc.LastMsgSenderID = lm.SenderID
 	imc.LastMsgTime = lm.SendTime
 	imc.LastMsgSeq = lm.Seq

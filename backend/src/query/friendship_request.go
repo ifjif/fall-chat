@@ -1,7 +1,11 @@
 package query
 
+import "zzc/fall-chat/src/filter"
+
 type ListFriendRequest struct {
-	ID           int64
-	Username     string
-	FilterStatus []int
+	UserID   uint64
+	Username string
+	Filter   *filter.FriendshipRequestFilter
+	Next     string
+	SortKey  string
 }

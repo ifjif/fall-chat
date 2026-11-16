@@ -1,7 +1,11 @@
 package query
 
+import "zzc/fall-chat/src/filter"
+
 type ListGroupRequest struct {
-	ID           int64
-	Username     string
-	FilterStatus []int
+	UserID   int64
+	Username string
+	Next     string
+	SortKey  string
+	Filter   *filter.GroupRequestFilter
 }

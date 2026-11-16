@@ -73,7 +73,7 @@ func (uc *UpdateConversation) Execute(ctx context.Context) error {
 
 		reason = "更新会话发送者消息信息失败"
 		// 更新成员消息seq
-		err = repo.ConvMemb.UpdateLastReadSeq(ctx, updateMember)
+		_, err = repo.ConvMemb.UpdateLastReadSeq(ctx, updateMember)
 		if err != nil {
 			return err
 		}

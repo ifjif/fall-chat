@@ -4,34 +4,61 @@ import (
 	"zzc/fall-chat/src/command"
 	"zzc/fall-chat/src/dto/request"
 	"zzc/fall-chat/src/dto/response"
+	"zzc/fall-chat/src/filter"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/query"
 )
 
-func ToAddGroupRequestCommand(req *request.AddGroup) *command.AddGroupRequest {
-	return &command.AddGroupRequest{
-		GroupID:   req.GroupID,
+func ToAddGroupRequestCommand(req *request.AddGroup) (*command.AddGroupRequest, error) {
+	groupID, err := model.DecodeID(req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	var invitedID int64
+	if req.InvitedID != "" {
+		invitedID, err = model.DecodeID(req.InvitedID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	cmd := &command.AddGroupRequest{
+		GroupID:   groupID,
 		Greeting:  req.Greeting,
-		InvitedID: req.InvitedID,
 		ApplyType: req.ApplyType,
 	}
+	if req.InvitedID != "" {
+		cmd.InvitedID = &invitedID
+	}
+
+	return cmd, nil
 }
 
 func ToListGroupRequestQuery(req *request.ListGroup) *query.ListGroupRequest {
-	return &query.ListGroupRequest{
-		FilterStatus: req.FilterStatus,
+	qu := &query.ListGroupRequest{
+		Next:    req.Next,
+		SortKey: req.SortKey,
 	}
+
+	qu.Filter = &filter.GroupRequestFilter{
+		Status: req.Status,
+	}
+
+	return qu
 }
 
-func ToHandleGroupRequestCommand(req *request.HandleGroup) *command.HandleGroupRequest {
+func ToHandleGroupRequestCommand(req *request.HandleGroup) (*command.HandleGroupRequest, error) {
+	handleID, err := model.DecodeID(req.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &command.HandleGroupRequest{
-		HandleID: req.ID,
+		HandleID: handleID,
 		Action:   req.Action,
-	}
+	}, nil
 }
 
-func ToListGroupRequestResult(row *model.GroupRequestRow) *response.ListGroupRequestResult {
-	result := &response.ListGroupRequestResult{
+func ToGroupRequestResult(row *model.GroupRequestRow, userID uint64) *response.GroupRequestResult {
+	result := &response.GroupRequestResult{
 		ID:             row.PublicID,
 		GroupID:        row.GroupInfo.PublicID,
 		GroupName:      row.GroupInfo.GroupName,
@@ -56,6 +83,8 @@ func ToListGroupRequestResult(row *model.GroupRequestRow) *response.ListGroupReq
 		result.HandleByUserName = row.HandleByUser.Nickname
 		result.HandleByUserAvatar = row.HandleByUser.Avatar
 	}
+
+	result.Sender = row.ApplyUser.ID == userID
 
 	return result
 }

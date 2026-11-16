@@ -3,7 +3,7 @@ package command
 import "mime/multipart"
 
 type FileUploadChunk struct {
-	ID       int64
+	UserID   int64
 	Username string
 	FileID   string
 	Index    int
@@ -11,7 +11,7 @@ type FileUploadChunk struct {
 }
 
 type FileUploadMerge struct {
-	ID         int64
+	UserID     int64
 	Username   string
 	Filename   string
 	FileID     string
@@ -20,7 +20,7 @@ type FileUploadMerge struct {
 }
 
 type FileUpload struct {
-	ID       int64
+	UserID   int64
 	Username string
 	FileID   string
 	File     *multipart.FileHeader

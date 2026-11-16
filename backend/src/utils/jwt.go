@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 var (
@@ -33,11 +34,7 @@ type CustomClaims struct {
 
 // 长效token
 func GenerateRefreshToken(userID, username, deviceID string) (string, string, int64, error) {
-	id, err := SF.NextID()
-	if err != nil {
-		return "", "", 0, err
-	}
-	jti := SF.Encode(id)
+	jti := uuid.NewString()
 	token, expiresIn, err := GenerateJWT(TOKEN_REFRESH_TYPE, jti, userID, username, deviceID, TOKEN_REFRESH_EXPIRE_DURATION)
 
 	return jti, token, expiresIn, err

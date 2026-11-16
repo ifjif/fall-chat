@@ -40,7 +40,6 @@ import { countDown, padZero } from '@/utils/index'
 import { forgetPasswordApi, loginApi, registerApi } from '@/api/user'
 import { passRestCodeApi } from '@/api/email'
 import router from '@/router'
-import { useUserStore } from '@/stores/user_info'
 import { initApp } from '@/initApp'
 const actions = ['登录', '注册', '忘记密码']
 const defaultAction = ref(0)

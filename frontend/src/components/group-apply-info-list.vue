@@ -49,6 +49,7 @@
             </div>
           </template>
         </FlMenu>
+        <LoadingMore :loading="loading" :more="hasNext" :cursor="nextCursor" @click="nextPage"></LoadingMore>
       </FlScrollBar>
     </div>
   </div>
@@ -57,8 +58,9 @@
 import { onMounted, ref, watch } from 'vue'
 import { FlScrollBar, FlTabs, FlTabPane, FlMenu, FlButton } from 'fall-ui';
 import { listGroupRequestApi, handleGroupRequestApi } from '@/api/group_request'
-import Avatar from './avatar.vue';
+import Avatar from './common/avatar.vue';
 import { parseTime } from '@/utils/timeinfo';
+import LoadingMore from './common/loading-more.vue';
 
 const activeStatus = ref('all')
 
@@ -99,18 +101,36 @@ const statusList = [
 ]
 
 const groupApplyData = ref([])
+const nextCursor = ref("")
+const loading = ref(false)
+const hasNext = ref(false)
 
 watch(() => activeStatus.value, nv => {
+  nextCursor.value = ""
+  groupApplyData.value = []
   fetchApplyInfo(statusValue[nv])
 })
 
 const fetchApplyInfo = async (status = []) => {
   const data = {
-    filter_status: status
+    status,
+    next: nextCursor.value,
+    sort_key: "created_desc"
   }
 
   const result = await listGroupRequestApi(data)
-  groupApplyData.value = result ?? []
+  if (result && result.data) {
+    groupApplyData.value.push(...result.data)
+    nextCursor.value = result.next
+    hasNext.value = result.has_next
+  }
+}
+
+const nextPage = () => {
+  loading.value = true
+  fetchApplyInfo(statusValue[activeStatus.value]).finally(() => {
+    loading.value = false
+  })
 }
 
 const handleRequest = async (item, action) => {

@@ -135,3 +135,58 @@ func (k *GroupUserIDs) String() string {
 func (k *GroupUserIDs) TTL() time.Duration {
 	return tplGroupUserIDsTTL
 }
+
+// ==================================
+type PublishEmojiItemCount struct {
+	PackID uint64
+	UserID uint64
+}
+
+func (k *PublishEmojiItemCount) String() string {
+	return WithNs(tplPublishEmojiItemCount, k.PackID, k.UserID)
+}
+
+func (k *PublishEmojiItemCount) TTL() time.Duration {
+	return tplPublishEmojiItemCountTTL
+}
+
+// =======================================
+type ConvMembLastReadMsgSeq struct {
+	UserID int64
+	ConvID int64
+}
+
+func (k *ConvMembLastReadMsgSeq) String() string {
+	return WithNs(tplConvMembLastReadMsgSeq, k.UserID, k.ConvID)
+}
+
+func (k *ConvMembLastReadMsgSeq) TTL() time.Duration {
+	return tplConvMembLastReadMsgSeqTTL
+}
+
+// ===================================
+type RtcRoom struct {
+	RoomID string
+}
+
+func (k *RtcRoom) String() string {
+	return WithNs(tplRtcRoom, k.RoomID)
+}
+
+func (k *RtcRoom) TTL() time.Duration {
+	return tplRtcRoomTTL
+}
+
+// ==========================================
+// 用户活跃的单聊房间
+type RtcPeerRoom struct {
+	UserID int64
+}
+
+func (k *RtcPeerRoom) String() string {
+	return WithNs(tplRtcPeerRoom, k.UserID)
+}
+
+func (k *RtcPeerRoom) TTL() time.Duration {
+	return tplRtcPeerRoomTTL
+}

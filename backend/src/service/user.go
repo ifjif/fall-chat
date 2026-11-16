@@ -50,18 +50,13 @@ func (us *User) RegisterUser(ctx context.Context, username, password string) (st
 		)
 	}
 
-	id, err := us.sf.NextID()
-	if err != nil {
-		return pID, us.Wrap("RegisterUser", err,
-			"username", username,
-			"reason", "生成ID失败",
-		)
+	user := model.User{}
+	if err = model.InjectID(&user.Model); err != nil {
+		return pID, us.Wrap("生成id", err,
+			"username", username)
 	}
+	pID = user.PublicID
 
-	pID = us.sf.Encode(id)
-
-	user := model.NewUser(id)
-	user.PublicID = pID
 	user.Username = username
 	user.Nickname = "user" + pID
 	user.Password = utils.EncryptPassword(password)
@@ -69,7 +64,7 @@ func (us *User) RegisterUser(ctx context.Context, username, password string) (st
 	err = us.store.
 		UserRepos().
 		User.
-		CreateOne(ctx, *user)
+		CreateOne(ctx, user)
 	if err != nil {
 		return "", us.Wrap("RegisterUser", err)
 	}
@@ -84,6 +79,9 @@ func (us *User) Login(ctx context.Context, username, password string) (*response
 		FindByUsername(ctx, username)
 	if err != nil {
 		return nil, us.Wrap("Login", err)
+	}
+	if user == nil {
+		return nil, errs.UserErrNotExistUser
 	}
 	err = utils.DecryptPassword(user.Password, password)
 	if err != nil {
@@ -132,6 +130,9 @@ func (us *User) ResetPassword(ctx context.Context, cmd *command.RestPassword) er
 	if err != nil {
 		return err
 	}
+	if user == nil {
+		return errs.UserErrNotExistUser
+	}
 
 	err = utils.DecryptPassword(user.Password, cmd.OldPass)
 	if err != nil {
@@ -179,6 +180,9 @@ func (us *User) ForgetPassword(ctx context.Context, cmd *command.ForgetPassword)
 	if err != nil {
 		return us.Wrap("找用户", err, "username", cmd.Username)
 	}
+	if user == nil {
+		return errs.UserErrNotExistUser
+	}
 
 	if user.Email != cmd.Email {
 		return us.Wrap("", errs.UserErrEmail,
@@ -205,6 +209,9 @@ func (us *User) UpdateProfile(ctx context.Context, cmd *command.UpdateProfile) e
 		User.FindByID(ctx, cmd.ID)
 	if err != nil {
 		return us.Wrap("找用户", err, "id", cmd.ID)
+	}
+	if user == nil {
+		return errs.UserErrNotExistUser
 	}
 
 	if err := utils.DecryptPassword(user.Password, cmd.Password); err != nil {
@@ -244,6 +251,9 @@ func (us *User) Profile(ctx context.Context, id int64) (*model.User, error) {
 		User.FindByID(ctx, id)
 	if err != nil {
 		return nil, us.Wrap("找用户", err, "id", id)
+	}
+	if user == nil {
+		return nil, errs.UserErrNotExistUser
 	}
 
 	return user, nil

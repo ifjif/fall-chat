@@ -6,15 +6,18 @@ import (
 	"time"
 	"zzc/fall-chat/src/command"
 	"zzc/fall-chat/src/converter"
+	"zzc/fall-chat/src/cursor"
 	"zzc/fall-chat/src/data"
 	"zzc/fall-chat/src/data/repos"
 	"zzc/fall-chat/src/data/store"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
+	"zzc/fall-chat/src/filter"
 	"zzc/fall-chat/src/mess"
-	"zzc/fall-chat/src/message_queue/producer"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/mq/producer"
 	"zzc/fall-chat/src/query"
+	"zzc/fall-chat/src/queryparam"
 	"zzc/fall-chat/src/utils"
 )
 
@@ -41,17 +44,12 @@ func (grs *GroupRequest) Inject() {
 // 留给处理 请求来处理
 // 这里只负责 创建记录
 func (grs *GroupRequest) Apply(ctx context.Context, cmd *command.AddGroupRequest) error {
-	groupID, err := grs.sf.Decode(cmd.GroupID)
-	if err != nil {
-		return grs.Wrap("群ID解码", err, "username", cmd.Username)
-	}
+	groupID := cmd.GroupID
 
-	userID := cmd.ID
-	if cmd.InvitedID != "" {
-		invitedID, err := grs.sf.Decode(cmd.InvitedID)
-		if err != nil {
-			return grs.Wrap("解码被邀请人ID", err, "username", cmd.Username)
-		}
+	userID := cmd.UserID
+	inviterID := cmd.UserID
+	if cmd.InvitedID != nil {
+		invitedID := *cmd.InvitedID
 
 		if userID == invitedID {
 			return grs.Wrap("", errs.SocialErrGroupRequestInviteSelf, "username", cmd.Username)
@@ -62,7 +60,7 @@ func (grs *GroupRequest) Apply(ctx context.Context, cmd *command.AddGroupRequest
 		member, err := grs.store.
 			GroupRequestRepos().
 			GroupMemeber.
-			FindRole(ctx, groupID, cmd.ID)
+			FindRole(ctx, groupID, inviterID)
 		if err != nil {
 			return grs.Wrap("找群成员", err, "username", cmd.Username)
 		}
@@ -122,14 +120,14 @@ func (grs *GroupRequest) Apply(ctx context.Context, cmd *command.AddGroupRequest
 
 	// 添加申请
 	gr := model.GroupRequest{}
-	err = utils.InjectID4Model(grs.sf, &gr.Model)
+	err = model.InjectID(&gr.Model)
 	if err != nil {
 		return grs.Wrap("生成群申请ID", err, ctxFields...)
 	}
 	gr.ToGroupID = groupID
 	gr.FromUserID = userID
-	if cmd.InvitedID != "" {
-		gr.InviterUserID = cmd.ID
+	if cmd.InvitedID != nil {
+		gr.InviterUserID = inviterID
 	}
 	gr.Message = cmd.Greeting
 	gr.ApplyType = int8(cmd.ApplyType)
@@ -145,33 +143,66 @@ func (grs *GroupRequest) Apply(ctx context.Context, cmd *command.AddGroupRequest
 	return nil
 }
 
-func (grs *GroupRequest) List(ctx context.Context, qu *query.ListGroupRequest) ([]*response.ListGroupRequestResult, error) {
-	rows, err := grs.store.
-		GroupRequestRepos().
-		GroupRequest.
-		List(ctx, qu.ID, qu.FilterStatus, 10)
+func (grs *GroupRequest) List(ctx context.Context, qu *query.ListGroupRequest) (*response.PageCursor, error) {
+	param := queryparam.GroupRequestList{
+		Filter: filter.ListFilterOptions{
+			FilterDef: filter.GroupRequestFilterDefinition,
+			Filter:    filter.ToMap(qu.Filter),
+		},
+	}
+	pager := &cursor.CursorPager[*cursor.GroupRequestCursor, *model.GroupRequestRow, *response.GroupRequestResult]{
+		Limit: 20,
+		DecodeNext: func(s string) (*cursor.GroupRequestCursor, error) {
+			return cursor.Decode[cursor.GroupRequestCursor](s)
+		},
+		GetSortDef: func(key string) (cursor.SortDefinition, error) {
+			def, ok := cursor.GroupRequestSortDefinitions[key]
+			if !ok {
+				return cursor.EmptySortDef, errs.CommonErrSortKeyNotExist
+			}
+			return def, nil
+		},
+		Query: func(ctx context.Context, sortValue map[string]any, sortDef cursor.SortDefinition, limit int) ([]*model.GroupRequestRow, error) {
+			param.Sort = cursor.ListSortOptions{
+				SortDef: sortDef,
+				Sort:    sortValue,
+			}
+			return grs.store.
+				GroupRequestRepos().
+				GroupRequest.
+				List(ctx, uint64(qu.UserID), param, limit)
+		},
+		BuildCursor: func(next *cursor.GroupRequestCursor, rows []*model.GroupRequestRow, lastIdx int, hasNext bool) *cursor.GroupRequestCursor {
+			last := rows[lastIdx]
+			c := &cursor.GroupRequestCursor{
+				ID: last.ID,
+			}
+			c.SetHasNext(hasNext)
+			return c
+		},
+		ToResult: func(row *model.GroupRequestRow) *response.GroupRequestResult {
+			return converter.ToGroupRequestResult(row, uint64(qu.UserID))
+		},
+	}
+
+	result, encoded, hasNext, err := pager.List(ctx, qu.Next, qu.SortKey)
 	if err != nil {
-		return nil, grs.Wrap("找群申请信息", err, "username", qu.Username)
+		return nil, grs.Wrap("list group_request", err, "user_id", qu.UserID, "sort_key", qu.SortKey)
 	}
 
-	var result []*response.ListGroupRequestResult
-
-	for i := range rows {
-		v := converter.ToListGroupRequestResult(&rows[i])
-		v.Sender = rows[i].ApplyUser.ID == uint64(qu.ID)
-		result = append(result, v)
-	}
-	return result, nil
+	return &response.PageCursor{
+		Data:    utils.ToAnySlice(result),
+		Next:    encoded,
+		HasNext: hasNext,
+	}, nil
 }
 
 //	申请 只能被一次处理
 //
 // 判断群成员 (可增加锁)
 func (grs *GroupRequest) Handle(ctx context.Context, cmd *command.HandleGroupRequest) error {
-	handleID, err := grs.sf.Decode(cmd.HandleID)
-	if err != nil {
-		return grs.Wrap("解码处理id", err, "handle_id", cmd.HandleID, "username", cmd.Username)
-	}
+	handleID := cmd.HandleID
+
 	// 找群申请
 	requestInfo, err := grs.store.
 		GroupRequestRepos().
@@ -228,7 +259,7 @@ func (grs *GroupRequest) Handle(ctx context.Context, cmd *command.HandleGroupReq
 		return grs.Wrap("", errs.SocialErrGroupMemberRoleOrdinary, "username", cmd.Username)
 	}
 
-	groupID := grs.sf.Encode(requestInfo.ToGroupID)
+	groupID := model.EncodeID(requestInfo.ToGroupID)
 
 	// 找群会话
 	convID, err := grs.store.
@@ -267,7 +298,7 @@ func (grs *GroupRequest) Handle(ctx context.Context, cmd *command.HandleGroupReq
 
 		reason = "生成群成员ID失败"
 		member := &model.GroupMember{}
-		err = utils.InjectID4Model(grs.sf, &member.Model)
+		err = model.InjectID(&member.Model)
 		if err != nil {
 			return err
 		}
@@ -283,7 +314,7 @@ func (grs *GroupRequest) Handle(ctx context.Context, cmd *command.HandleGroupReq
 
 		reason = "生成群会话成员ID失败"
 		convMember := model.GenerateConvMember(convID, member.UserID, member.GroupID)
-		err = utils.InjectID4Model(grs.sf, &convMember.Model)
+		err = model.InjectID(&convMember.Model)
 		if err != nil {
 			return err
 		}
@@ -298,7 +329,7 @@ func (grs *GroupRequest) Handle(ctx context.Context, cmd *command.HandleGroupReq
 		return grs.Wrap(reason, err, "username", cmd.Username)
 	}
 
-	userID := grs.sf.Encode(requestInfo.FromUserID)
+	userID := model.EncodeID(requestInfo.FromUserID)
 
 	v := mess.JoinGroup{
 		GroupID: groupID,

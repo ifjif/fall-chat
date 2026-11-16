@@ -38,7 +38,7 @@
 
 <script setup>
 import { createGroupApi } from '@/api/group'
-import ImageUpload from '@/components/image-upload.vue'
+import ImageUpload from '../common/image-upload.vue'
 import { ref } from 'vue'
 import { uploadFile } from '@/utils/file_upload'
 

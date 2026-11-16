@@ -12,6 +12,7 @@ import (
 	"zzc/fall-chat/src/dto/request"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
+	"zzc/fall-chat/src/host"
 	"zzc/fall-chat/src/keys/ctxkey"
 	"zzc/fall-chat/src/middleware"
 	"zzc/fall-chat/src/resp"
@@ -25,28 +26,28 @@ import (
 
 type MessageHandler func(client *conns.Client, message *request.WSMessage)
 
-type WSController struct {
-	BaseController
+type WS struct {
+	Base
 	wsService       *service.Ws
 	messageHandlers map[string]MessageHandler
 	room            map[string]bool
 }
 
-func NewWSController(name string) *WSController {
-	bs := BaseController{name: name}
-	return &WSController{
-		BaseController:  bs,
+func NewWS(name string) *WS {
+	bs := Base{name: name}
+	return &WS{
+		Base:            bs,
 		messageHandlers: make(map[string]MessageHandler),
 		room:            make(map[string]bool),
 	}
 }
 
-func (wsc *WSController) Inject() {
+func (wsc *WS) Inject() {
 	wsService := service.GlobalService[service.WS_SERVICE_NAME].(*service.Ws)
 	wsc.wsService = wsService
 }
 
-func (wsc *WSController) SetRoute(r fiber.Router) {
+func (wsc *WS) SetRoute(r fiber.Router) {
 	group := r.Group("/ws")
 
 	auth := group.Group("")
@@ -68,12 +69,12 @@ func (wsc *WSController) SetRoute(r fiber.Router) {
 	wsc.messageHandlers["leave"] = wsc.leaveMessageHandler
 }
 
-func (wsc *WSController) getLogger(c *websocket.Conn) *slog.Logger {
+func (wsc *WS) getLogger(c *websocket.Conn) *slog.Logger {
 	traceID := uuid.New().String()
 	return slog.Default().With("trace_id", traceID)
 }
 
-func (wsc *WSController) accessURL(c fiber.Ctx) error {
+func (wsc *WS) accessURL(c fiber.Ctx) error {
 	pID := ctxkey.GetUserPubID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -84,7 +85,7 @@ func (wsc *WSController) accessURL(c fiber.Ctx) error {
 	}
 	protocol := "wss"
 	// host := "localhost"
-	host := "192.168.1.106"
+	host := host.HOSTIP4
 	port := "443"
 	urlPrefix := "/api/v1"
 	url := fmt.Sprintf("%s://%s:%s%s/ws/%s?token=%s",
@@ -98,7 +99,7 @@ func (wsc *WSController) accessURL(c fiber.Ctx) error {
 		JSON(url)
 }
 
-func (wsc *WSController) websocketHandler() func(fiber.Ctx) error {
+func (wsc *WS) websocketHandler() func(fiber.Ctx) error {
 	return websocket.New(func(c *websocket.Conn) {
 		logger := wsc.getLogger(c)
 		id := c.Params("id", "")
@@ -137,7 +138,7 @@ func (wsc *WSController) websocketHandler() func(fiber.Ctx) error {
 	})
 }
 
-func (wsc *WSController) dispatchMessage(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) dispatchMessage(client *conns.Client, message *request.WSMessage) {
 	mType := message.Type
 
 	messageHandler, ok := wsc.messageHandlers[mType]
@@ -149,11 +150,11 @@ func (wsc *WSController) dispatchMessage(client *conns.Client, message *request.
 	wsc.unmatchHandler(client, message)
 }
 
-func (wsc *WSController) unmatchHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) unmatchHandler(client *conns.Client, message *request.WSMessage) {
 	wsc.errorHandler(client, "unmatch", &response.WSErr{Error: errs.ErrWSNotFound})
 }
 
-func (wsc *WSController) errorHandler(client *conns.Client, ty string, data *response.WSErr) {
+func (wsc *WS) errorHandler(client *conns.Client, ty string, data *response.WSErr) {
 	// 错误的类型
 	errType := ty + "_error"
 	err := data.Error
@@ -179,11 +180,11 @@ func (wsc *WSController) errorHandler(client *conns.Client, ty string, data *res
 	wsc.wsService.SendMessage(client.GetContext(), client.ID, respErr)
 }
 
-func (wsc *WSController) pingHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) pingHandler(client *conns.Client, message *request.WSMessage) {
 	wsc.wsService.HandlePingMessage(client)
 }
 
-func (wsc *WSController) chatMessageHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) chatMessageHandler(client *conns.Client, message *request.WSMessage) {
 	var chatData request.ChatData
 	err := json.Unmarshal(message.Data, &chatData)
 	if err != nil {
@@ -205,7 +206,7 @@ func (wsc *WSController) chatMessageHandler(client *conns.Client, message *reque
 	}
 }
 
-func (wsc *WSController) offerMessageHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) offerMessageHandler(client *conns.Client, message *request.WSMessage) {
 	var offerData request.OfferData
 	json.Unmarshal(message.Data, &offerData)
 	fmt.Printf("收到offer: %v\n", offerData)
@@ -219,7 +220,7 @@ func (wsc *WSController) offerMessageHandler(client *conns.Client, message *requ
 	})
 }
 
-func (wsc *WSController) answerMessageHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) answerMessageHandler(client *conns.Client, message *request.WSMessage) {
 	var answerData request.AnswerData
 	json.Unmarshal(message.Data, &answerData)
 	fmt.Printf("收到answer: %v\n", answerData)
@@ -233,7 +234,7 @@ func (wsc *WSController) answerMessageHandler(client *conns.Client, message *req
 	})
 }
 
-func (wsc *WSController) candidateMessageHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) candidateMessageHandler(client *conns.Client, message *request.WSMessage) {
 	var candidateDate request.CandidateData
 	json.Unmarshal(message.Data, &candidateDate)
 	fmt.Printf("收到candidate: %v\n", candidateDate)
@@ -247,7 +248,7 @@ func (wsc *WSController) candidateMessageHandler(client *conns.Client, message *
 	})
 }
 
-func (wsc *WSController) joinMessageHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) joinMessageHandler(client *conns.Client, message *request.WSMessage) {
 	var joinData request.JoinData
 	json.Unmarshal(message.Data, &joinData)
 
@@ -268,7 +269,7 @@ func (wsc *WSController) joinMessageHandler(client *conns.Client, message *reque
 		wsc.wsService.SendMessage(context.Background(), id, response.WSMessage{
 			Type: "peer-joined",
 			Data: fiber.Map{
-				"peerId": joinData.PeerID,
+				"peer_id": joinData.PeerID,
 			},
 		})
 	}
@@ -276,7 +277,7 @@ func (wsc *WSController) joinMessageHandler(client *conns.Client, message *reque
 	wsc.room[joinData.PeerID] = true
 }
 
-func (wsc *WSController) inviteMessageHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) inviteMessageHandler(client *conns.Client, message *request.WSMessage) {
 	var inviteData request.InviteData
 	json.Unmarshal(message.Data, &inviteData)
 
@@ -289,10 +290,11 @@ func (wsc *WSController) inviteMessageHandler(client *conns.Client, message *req
 	})
 }
 
-func (wsc *WSController) leaveMessageHandler(client *conns.Client, message *request.WSMessage) {
+func (wsc *WS) leaveMessageHandler(client *conns.Client, message *request.WSMessage) {
 	var leaveData request.LeaveData
 	json.Unmarshal(message.Data, &leaveData)
 
+	utils.LogDebug("离开房间：%v", leaveData)
 	if wsc.room != nil {
 		delete(wsc.room, leaveData.PeerID)
 	}
@@ -301,7 +303,7 @@ func (wsc *WSController) leaveMessageHandler(client *conns.Client, message *requ
 		wsc.wsService.SendMessage(context.Background(), id, response.WSMessage{
 			Type: "peer-left",
 			Data: fiber.Map{
-				"peerId": leaveData.PeerID,
+				"peer_id": leaveData.PeerID,
 			},
 		})
 	}

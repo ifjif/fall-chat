@@ -1,10 +1,11 @@
 <template>
   <template v-for="convs in [convStore.tempConversations, convStore.conversations]">
-    <fl-menu @select="handleSelect" keyProp="id" :activeIndex="active" :isCollapse="false" :width="260" :data="convs">
+    <fl-menu @select="handleSelect" keyProp="id" :activeIndex="active" :isCollapse="collapse" :width="260"
+      :data="convs">
       <template #icon="{ item }">
-        <div style="position:relative;">
+        <div style="position:relative;display:flex;justify-content: center;">
           <Avatar :uri="item.avatar"></Avatar>
-          <Bedge :max="999" :value="item.unread_count"></Bedge>
+          <Badge :max="999" :value="item.unread_count"></Badge>
         </div>
       </template>
       <template #title="{ item }">
@@ -32,13 +33,32 @@
   </template>
 </template>
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useConversationStore } from '@/stores/conversation_store'
-import Avatar from '@/components/avatar.vue'
-import Bedge from '@/components/bedge.vue'
+import Avatar from '@/components/common/avatar.vue'
+import Badge from '@/components/common/badge.vue'
 import { parseTime } from '@/utils/timeinfo'
+const props = defineProps({
+  collapse: {
+    type: Boolean,
+    default: false
+  }
+})
 const convStore = useConversationStore()
-const active = computed(() => convStore.getActiveConv().id)
+const active = computed(() => {
+  const conv = convStore.getActiveConv()
+  return conv.id ?? ""
+})
+
+
+watch(() => active.value, nv => {
+  if (nv) {
+    convStore.pullMessage(nv)
+  }
+}, {
+  immediate: true
+})
+
 
 const handleSelect = (index, item) => {
   convStore.setActiveConv(item)

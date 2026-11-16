@@ -35,22 +35,19 @@ func (es *Email) PassResetCode(ctx context.Context, email string) (id string, er
 
 	duration := 15 * time.Minute
 
-	id_, err_ := es.sf.NextID()
-	if err_ != nil {
+	prc := model.PasswordRestCode{}
+	err_ := model.InjectID(&prc.Model)
+	if err != nil {
 		return id, es.Wrap("生成ID", err_, "email", email)
 	}
 
-	pID := utils.SF.Encode(id_)
-
-	prc := model.NewPasswordRestCode(id_)
 	prc.Code = code
-	prc.PublicID = pID
 	prc.ExpireAt = time.Now().Add(duration)
 
 	err = es.store.
 		EmailRepos().
 		Email.
-		CreateOne(ctx, *prc)
+		CreateOne(ctx, prc)
 	if err != nil {
 		return id, es.Wrap("插入重置密码验证码记录", err, "username", es.name)
 	}
@@ -59,12 +56,12 @@ func (es *Email) PassResetCode(ctx context.Context, email string) (id string, er
 		utils.SendResetCodeEmail(email, code)
 	}()
 
-	id = pID
+	id = prc.PublicID
 	return id, nil
 }
 
 func (es *Email) VerifyPasswordRestCode(ctx context.Context, codeID, code string) error {
-	id, err := es.sf.Decode(codeID)
+	id, err := model.DecodeID(codeID)
 	if err != nil {
 		return es.Wrap("codeID解码", err, "code_id", codeID)
 	}

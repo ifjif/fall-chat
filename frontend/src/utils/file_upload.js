@@ -8,6 +8,8 @@ const worker = new Worker(
 
 const taskCallbacks = new Map()
 
+// finish -> 完成时回调 ({fileUrl}) => void
+// process -> 处理+上传 总进度 ({total}) => void  total为总chunks数，每次上传完一个chunk进行调用
 export const uploadFile = (file, finish, process) => {
   const taskId = Date.now() + "_" + Math.random().toString(36).slice(2)
   taskCallbacks.set(taskId, { finish, process })

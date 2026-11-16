@@ -43,18 +43,14 @@ func (fs *File) Inject() {
 }
 
 func (fs *File) add(ctx context.Context, maxSize int64, chunkSize int64) (*model.FileConfig, error) {
-	id, err := fs.sf.NextID()
-	if err != nil {
-		return nil, fs.Wrap("生成文件配置信息ID", err)
-	}
-	publicID := fs.sf.Encode(id)
-
 	fc := &model.FileConfig{
 		MaxSize:   maxSize,
 		ChunkSize: chunkSize,
 	}
-	fc.ID = uint64(id)
-	fc.PublicID = publicID
+	err := model.InjectID(&fc.Model)
+	if err != nil {
+		return nil, fs.Wrap("生成ID", err)
+	}
 
 	err = fs.store.FileRepos().File.CreateOne(ctx, *fc)
 	if err != nil {

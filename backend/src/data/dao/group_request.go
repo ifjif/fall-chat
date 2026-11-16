@@ -3,8 +3,11 @@ package dao
 import (
 	"context"
 	"errors"
+	"zzc/fall-chat/src/cursor"
 	"zzc/fall-chat/src/data/executor"
+	"zzc/fall-chat/src/filter"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/queryparam"
 
 	"gorm.io/gorm"
 )
@@ -14,7 +17,11 @@ type GroupRequestDao interface {
 
 	CreateOne(ctx context.Context, m *model.GroupRequest) error
 
-	List(ctx context.Context, id int64, filterStatus []int, limit int) ([]model.GroupRequestRow, error)
+	List(
+		ctx context.Context,
+		userID uint64,
+		qp queryparam.GroupRequestList,
+		limit int) ([]*model.GroupRequestRow, error)
 
 	// Select("to_group_id, from_user_id, status, apply_type").
 	FindBriefOne(ctx context.Context, id int64) (*model.GroupRequest, error)
@@ -47,35 +54,39 @@ func (dao *groupRequestDao) CreateOne(ctx context.Context, m *model.GroupRequest
 }
 
 // 找我管理的群 和 我请求的群:
-func (dao *groupRequestDao) List(ctx context.Context, id int64, filterStatus []int, limit int) ([]model.GroupRequestRow, error) {
+func (dao *groupRequestDao) List(
+	ctx context.Context,
+	userID uint64,
+	qp queryparam.GroupRequestList,
+	limit int,
+) ([]*model.GroupRequestRow, error) {
 	// 找我管理的群
 	subquery := dao.db.Model(&model.GroupMember{}).
-		Where("user_id = ? and role in ?", id, []int{1, 2}).
+		Where("user_id = ? and role in ?", userID, []int{1, 2}).
 		Select("group_id")
 
 	query1 := dao.db.Model(&model.GroupRequest{}).
 		Where("to_group_id in (?)", subquery).
-		Select("id")
+		Scopes(filter.BuildFilterScope(qp.Filter.FilterDef, qp.Filter.Filter, nil)).
+		Select("id, created_at")
 
 	//  找我的请求
 	query2 := dao.db.Model(&model.GroupRequest{}).
-		Where("from_user_id = ?", id).
-		Select("id")
-
-	if len(filterStatus) > 0 {
-		query1.Where("status in ?", filterStatus)
-		query2.Where("status in ?", filterStatus)
-	}
+		Where("from_user_id = ?", userID).
+		Scopes(filter.BuildFilterScope(qp.Filter.FilterDef, qp.Filter.Filter, nil)).
+		Select("id,created_at")
 
 	var ids []int64
-	err := dao.db.Raw("select id from (? union all ?) as combined order by id desc limit ?",
-		query1, query2, 20).
-		Scan(&ids).Error
+	qb1 := dao.db.Table("(? union all ?) as combined", query1, query2).
+		Limit(limit).
+		Scopes(cursor.BuildSortScope(qp.Sort.SortDef, qp.Sort.Sort, nil))
+
+	err := qb1.Pluck("id", &ids).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var rows []model.GroupRequestRow
+	var rows []*model.GroupRequestRow
 
 	if len(ids) <= 0 {
 		return rows, err
@@ -95,8 +106,8 @@ func (dao *groupRequestDao) List(ctx context.Context, id int64, filterStatus []i
 			return db.Select("id, public_id, nickname, avatar")
 		}).
 		Where("id in ?", ids).
-		Order("created_at desc").
 		Limit(limit).
+		Scopes(cursor.BuildSortOrderScope(qp.Sort.SortDef, nil)).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err

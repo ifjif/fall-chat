@@ -1,88 +1,43 @@
-import { onUnmounted } from "vue";
+import { FlMessageBox } from "fall-ui";
 import { useMediaStream } from "./use_media_stream";
 import { usePeerConnection } from "./use_peer_connection";
-import { useSignaling } from "./use_signaling";
 import { useRoom } from "./use_room";
-import { FlMessageBox } from "fall-ui";
-
+import { useSignaling } from "./use_signaling";
+import { onUnmounted } from "vue";
 
 export function useWebRtc() {
   const media = useMediaStream()
   const signaling = useSignaling()
-  const peer = usePeerConnection(signaling, () => media.localStream.value)
+  const peers = usePeerConnection(signaling, () => media.localStream.value)
   const room = useRoom()
 
-  async function joinRoom(id, uid) {
-    await media.start()
+  // {video,audio, mediaKind, roomId, userId}
+  async function joinRoom(config) {
+    await media.start(config.video, config.audio, config.mediaKind)
     signaling.send({
       type: 'join',
       data: {
-        room_id: id,
-        peer_id: uid
+        room_id: config.roomId,
+        peer_id: config.userId
       }
     })
-    room.join(id, uid)
+    room.create(config.roomId, config.userId)
   }
 
-  function setupSignalingHandlers() {
-    signaling.on('joined', msg => {
-      // members是房间已有的人
-      for (const id of msg.members) {
-        // 只能由一端进行offer
-        if (id > room.selfId.value) {
-          peer.createOffer(id)
-          room.addRemote(id)
-        }
+  function leaveRoom() {
+    signaling.send({
+      type: 'leave',
+      data: {
+        room_id: room.roomId.value,
+        peer_id: room.selfId.value
       }
     })
-
-    signaling.on('invite', async msg => {
-      const fb = FlMessageBox({
-        type: 'info', onOk: () => {
-          joinRoom(msg.room_id, msg.id)
-          fb.close()
-        },
-        title: '收到邀请'
-      })
-    })
-
-    signaling.on('peer-joined', async msg => {
-      const peerId = msg.peerId
-      if (peerId) {
-        if (peerId > room.selfId.value) {
-          // 只能由一端进行offer
-          await peer.createOffer(peerId)
-          room.addRemote(peerId)
-        }
-      }
-    })
-
-    signaling.on('peer-left', msg => {
-      const peerId = msg.peerId
-      if (peerId) {
-        peer.removePeer(peerId)
-        room.removeRemote(peerId)
-      }
-    })
-
-    signaling.on('offer', async msg => {
-      if (!msg.peer_id || !msg.data) return
-      await peer.handleOffer(msg.peer_id, msg.data)
-      room.addRemote(msg.peer_id)
-    })
-
-    signaling.on('answer', msg => {
-      if (!msg.peer_id || !msg.data) return
-      peer.handleAnswer(msg.peer_id, msg.data)
-    })
-
-    signaling.on('candidate', msg => {
-      if (!msg.peer_id || !msg.data) return
-      peer.addCandidate(msg.peer_id, msg.data)
-    })
+    media.stop()
+    peers.closeAll()
+    room.leave()
   }
 
-  async function call(peerId) {
+  function call(peerId) {
     signaling.send({
       type: 'invite',
       data: {
@@ -92,32 +47,91 @@ export function useWebRtc() {
     })
   }
 
-  async function leaveRoom() {
-    signaling.send({
-      type: 'leave',
-      data: {
-        room_id: room.roomId.value,
-        peer_id: room.selfId.value
+  async function switchVideoDevice(deviceId) {
+    const res = await media.switchDevice('user', 'video', deviceId)
+    if (!res || !res.addedTrack) return
+    peers.replaceLocalTrack(res.addedTrack)
+  }
+
+  async function switchAudioDevice(deviceId) {
+    const res = await media.switchDevice('user', 'audio', deviceId)
+    if (!res || !res.addedTrack) return
+    peers.replaceLocalTrack(res.addedTrack)
+  }
+
+  function initSignaling() {
+    signaling.onOffer(msg => {
+      if (!msg.peer_id || !msg.data) return
+      peers.handleOffer(msg.peer_id, msg.data)
+      room.addRemote(msg.peer_id)
+    })
+
+    signaling.onAnswer(msg => {
+      if (!msg.peer_id || !msg.data) return
+      peers.handleAnswer(msg.peer_id, msg.data)
+    })
+
+    signaling.onCandidate(msg => {
+      if (!msg.peer_id || !msg.data) return
+      peers.addCandidate(msg.peer_id, msg.data)
+    })
+
+    signaling.on('joined', async msg => {
+      // 只能一端进行 offer
+      for (const id of msg.members) {
+        if (id > room.selfId.value) {
+          await peers.createOffer(id)
+          room.addRemote(id)
+        }
+      }
+
+    })
+    signaling.on('peer-joined', async msg => {
+      const peerId = msg.peer_id
+      if (peerId && peerId > room.selfId.value) {
+        await peers.createOffer(peerId)
+        room.addRemote(peerId)
       }
     })
-    media.stop()
-    peer.closeAll()
-    room.leave()
+    signaling.on('peer-left', msg => {
+      const peerId = msg.peer_id
+      if (peerId) {
+        peers.removePeer(peerId)
+        room.removeRemote(peerId)
+      }
+    })
+    signaling.on('invite', msg => {
+      const fb = FlMessageBox({
+        type: 'primary',
+        onOk: () => {
+          joinRoom({
+            video: true,
+            audio: true,
+            mediaKind: 'user',
+            roomId: msg.room_id,
+            userId: msg.id
+          })
+          fb.close()
+        },
+        title: '收到邀请'
+      })
+    })
   }
 
   onUnmounted(() => {
-    leave()
+    leaveRoom()
   })
 
-  setupSignalingHandlers()
+  initSignaling()
 
   return {
     ...media,
-    ...peer,
+    ...peers,
     ...room,
-    signaling,
     joinRoom,
     call,
-    leaveRoom
+    leaveRoom,
+    switchVideoDevice,
+    switchAudioDevice
   }
 }

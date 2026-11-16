@@ -9,26 +9,26 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type AuthController struct {
-	BaseController
+type Auth struct {
+	Base
 }
 
-func NewAuthController(name string) *AuthController {
-	return &AuthController{
-		BaseController: BaseController{
+func NewAuth(name string) *Auth {
+	return &Auth{
+		Base: Base{
 			name: name,
 		},
 	}
 }
 
-func (ac *AuthController) SetRoute(f fiber.Router) {
+func (ac *Auth) SetRoute(f fiber.Router) {
 	group := f.Group("/auth")
 	group.Get("/refresh", ac.refresh)
 }
 
 // /auth/refresh
 // 得到新 access token
-func (ac *AuthController) refresh(c fiber.Ctx) error {
+func (ac *Auth) refresh(c fiber.Ctx) error {
 	refreshToken := c.Cookies("refresh_token")
 	if refreshToken == "" {
 		err := resp.

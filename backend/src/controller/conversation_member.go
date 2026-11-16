@@ -12,34 +12,35 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type ConversationMemberController struct {
-	BaseController
+type ConversationMember struct {
+	Base
 	convMembService *service.ConversationMember
 }
 
-func NewConversationMemberController(name string) *ConversationMemberController {
-	bs := BaseController{name: name}
-	return &ConversationMemberController{
-		BaseController: bs,
+func NewConversationMember(name string) *ConversationMember {
+	bs := Base{name: name}
+	return &ConversationMember{
+		Base: bs,
 	}
 }
 
-func (cmc *ConversationMemberController) Inject() {
+func (cmc *ConversationMember) Inject() {
 	cms := service.GlobalService[service.CONVERSATION_MEMBER_SERVICE_NAME].(*service.ConversationMember)
 	cmc.convMembService = cms
 }
 
-func (cmc *ConversationMemberController) SetRoute(r fiber.Router) {
+func (cmc *ConversationMember) SetRoute(r fiber.Router) {
 	group := r.Group("/conversationMember")
 
-	auth := group.Group("")
-	auth.Use(middleware.AuthMiddleware)
+	authGroup := group.Group("")
+	authGroup.Use(middleware.AuthMiddleware)
 
-	auth.Get("/listBrief4Conv", cmc.listBrief4Conv)
-	auth.Post("/listBriefBatch", cmc.listBriefBatch)
+	authGroup.Get("/listBrief4Conv", cmc.listBrief4Conv)
+	authGroup.Post("/listBriefBatch", cmc.listBriefBatch)
+	authGroup.Post("/commit/read", cmc.commitRead)
 }
 
-func (cmc *ConversationMemberController) listBrief4Conv(c fiber.Ctx) error {
+func (cmc *ConversationMember) listBrief4Conv(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -48,8 +49,11 @@ func (cmc *ConversationMemberController) listBrief4Conv(c fiber.Ctx) error {
 		return cmc.Wrap("query bind faild.", err, "id", id)
 	}
 
-	qu := converter.ToConvMembListBrief4ConvQuery(req)
-	qu.ID = id
+	qu, err := converter.ToConvMembListBrief4ConvQuery(req)
+	if err != nil {
+		return err
+	}
+	qu.UserID = id
 	qu.Username = username
 
 	result, err := cmc.convMembService.ListBrief4Conv(c.Context(), qu)
@@ -63,7 +67,7 @@ func (cmc *ConversationMemberController) listBrief4Conv(c fiber.Ctx) error {
 		JSON(result)
 }
 
-func (cmc *ConversationMemberController) listBriefBatch(c fiber.Ctx) error {
+func (cmc *ConversationMember) listBriefBatch(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -72,8 +76,11 @@ func (cmc *ConversationMemberController) listBriefBatch(c fiber.Ctx) error {
 		return cmc.Wrap("body bind faild.", err, "id", id)
 	}
 
-	qu := converter.ToConvMembListBriefBatchQuery(req)
-	qu.ID = id
+	qu, err := converter.ToConvMembListBriefBatchQuery(req)
+	if err != nil {
+		return err
+	}
+	qu.UserID = id
 	qu.Username = username
 
 	result, err := cmc.convMembService.ListBriefBatch(c.Context(), qu)
@@ -85,4 +92,27 @@ func (cmc *ConversationMemberController) listBriefBatch(c fiber.Ctx) error {
 		New(c).
 		OK().
 		JSON(result)
+}
+
+func (cmc *ConversationMember) commitRead(c fiber.Ctx) error {
+	userID := ctxkey.GetUserID(c)
+
+	req, err := bind.Body[request.ConvMembCommitRead](c)
+	if err != nil {
+		return cmc.BindBoyErr(err)
+	}
+
+	cmd, err := converter.ToConvMembCommitReadCommand(req, userID)
+	if err != nil {
+		return err
+	}
+
+	err = cmc.convMembService.CommitRead(c.Context(), cmd)
+	if err != nil {
+		return err
+	}
+
+	return resp.New(c).
+		OK().
+		JSON(nil)
 }

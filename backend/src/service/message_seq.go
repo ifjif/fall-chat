@@ -4,6 +4,7 @@ import (
 	"context"
 	"zzc/fall-chat/src/data"
 	"zzc/fall-chat/src/data/store"
+	"zzc/fall-chat/src/keys/ctxkey"
 )
 
 type MessageSeq struct {
@@ -25,6 +26,7 @@ func (mss *MessageSeq) Inject() {
 }
 
 func (mss *MessageSeq) NextSeq(ctx context.Context, convID int64) (int64, error) {
+	logger := ctxkey.GetLogger(ctx)
 	// 从缓存中找
 	seq, ok := mss.store.
 		MessageSeqCache().
@@ -47,7 +49,11 @@ func (mss *MessageSeq) NextSeq(ctx context.Context, convID int64) (int64, error)
 		MessageSeqCache().
 		SetConvSeq(ctx, convID, seq)
 	if err != nil {
-		// TODO:
+		logger.Error("[redis]",
+			"reason", "设置会话消息seq失败",
+			"conv_id", convID,
+			"seq", seq,
+			"error", err)
 	}
 
 	return seq, nil

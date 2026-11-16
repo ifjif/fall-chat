@@ -2,8 +2,11 @@ package dao
 
 import (
 	"context"
+	"zzc/fall-chat/src/cursor"
 	"zzc/fall-chat/src/data/executor"
+	"zzc/fall-chat/src/filter"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/queryparam"
 )
 
 type FriendshipRequestDao interface {
@@ -11,7 +14,11 @@ type FriendshipRequestDao interface {
 
 	PendingAndAgreeCount(ctx context.Context, id, targetID int64) (int64, error)
 
-	List(ctx context.Context, id int64, filterStatus []int, limit int) ([]model.SearchFriendRequestRow, error)
+	List(
+		ctx context.Context,
+		userID uint64,
+		qp queryparam.FriendshipRequestList,
+		limit int) ([]*model.FriendshipRequestRow, error)
 
 	UpdateStatus(ctx context.Context, targetID int64, updates map[string]any) error
 
@@ -46,17 +53,27 @@ func (dao *friendshipRequestDao) PendingAndAgreeCount(ctx context.Context, id, t
 	return existsCount, err
 }
 
-func (dao *friendshipRequestDao) List(ctx context.Context, id int64, filterStatus []int, limit int) ([]model.SearchFriendRequestRow, error) {
-	mo := []model.SearchFriendRequestRow{}
-	qc := dao.db.Table("friendship_requests as f").
-		Joins("inner join users u on (u.id = f.from_user_id or u.id = f.to_user_id) and u.id != ?", id).
-		Where("f.to_user_id = ? or f.from_user_id = ?", id, id).
-		Order("f.created_at desc").
-		Limit(limit)
+func (dao *friendshipRequestDao) List(
+	ctx context.Context,
+	userID uint64,
+	qp queryparam.FriendshipRequestList,
+	limit int,
+) ([]*model.FriendshipRequestRow, error) {
+	mo := []*model.FriendshipRequestRow{}
 
-	if len(filterStatus) > 0 {
-		qc.Where("f.status in ?", filterStatus)
+	fPrefix := func(f string) string {
+		return "f." + f
 	}
+
+	qc := dao.db.Model(&model.FriendshipRequest{}).
+		Table("friendship_requests as f").
+		Joins("inner join users u on (u.id = f.from_user_id or u.id = f.to_user_id) and u.id != ?", userID).
+		Where("f.to_user_id = ? or f.from_user_id = ?", userID, userID).
+		Limit(limit).
+		Scopes(
+			filter.BuildFilterScope(qp.Filter.FilterDef, qp.Filter.Filter, fPrefix),
+			cursor.BuildSortScope(qp.Sort.SortDef, qp.Sort.Sort, fPrefix),
+		)
 
 	err := qc.Select("f.*, u.nickname, u.avatar").Find(&mo).Error
 

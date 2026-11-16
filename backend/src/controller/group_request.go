@@ -13,24 +13,24 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type GroupRequestController struct {
-	BaseController
+type GroupRequest struct {
+	Base
 	groupRequestService *service.GroupRequest
 }
 
-func NewGroupRequestController(name string) *GroupRequestController {
-	bc := BaseController{name: name}
-	return &GroupRequestController{
-		BaseController: bc,
+func NewGroupRequest(name string) *GroupRequest {
+	bc := Base{name: name}
+	return &GroupRequest{
+		Base: bc,
 	}
 }
 
-func (grc *GroupRequestController) Inject() {
+func (grc *GroupRequest) Inject() {
 	s := service.GlobalService[service.GROUPREQUEST_SERVICE_NAME].(*service.GroupRequest)
 	grc.groupRequestService = s
 }
 
-func (grc *GroupRequestController) SetRoute(r fiber.Router) {
+func (grc *GroupRequest) SetRoute(r fiber.Router) {
 	group := r.Group("/groupRequest")
 	authGroup := group.Group("")
 	authGroup.Use(middleware.AuthMiddleware)
@@ -40,7 +40,7 @@ func (grc *GroupRequestController) SetRoute(r fiber.Router) {
 	authGroup.Post("/handle", grc.handle)
 }
 
-func (sc *GroupRequestController) apply(c fiber.Ctx) error {
+func (sc *GroupRequest) apply(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -53,8 +53,11 @@ func (sc *GroupRequestController) apply(c fiber.Ctx) error {
 		return sc.Wrap("applyAddGroup", errs.SocialErrGroupRequestApplyType, "username", username)
 	}
 
-	cmd := converter.ToAddGroupRequestCommand(req)
-	cmd.ID = id
+	cmd, err := converter.ToAddGroupRequestCommand(req)
+	if err != nil {
+		return err
+	}
+	cmd.UserID = id
 	cmd.Username = username
 
 	err = sc.groupRequestService.Apply(c.Context(), cmd)
@@ -69,7 +72,7 @@ func (sc *GroupRequestController) apply(c fiber.Ctx) error {
 		JSON(nil)
 }
 
-func (sc *GroupRequestController) list(c fiber.Ctx) error {
+func (sc *GroupRequest) list(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -79,7 +82,7 @@ func (sc *GroupRequestController) list(c fiber.Ctx) error {
 	}
 
 	qu := converter.ToListGroupRequestQuery(req)
-	qu.ID = id
+	qu.UserID = id
 	qu.Username = username
 
 	result, err := sc.groupRequestService.List(c.Context(), qu)
@@ -93,7 +96,7 @@ func (sc *GroupRequestController) list(c fiber.Ctx) error {
 		JSON(result)
 }
 
-func (sc *GroupRequestController) handle(c fiber.Ctx) error {
+func (sc *GroupRequest) handle(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -102,7 +105,10 @@ func (sc *GroupRequestController) handle(c fiber.Ctx) error {
 		return sc.Wrap("body bind faild.", err, "username", username)
 	}
 
-	cmd := converter.ToHandleGroupRequestCommand(req)
+	cmd, err := converter.ToHandleGroupRequestCommand(req)
+	if err != nil {
+		return err
+	}
 	cmd.HandleByUserID = id
 	cmd.Username = username
 

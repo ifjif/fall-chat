@@ -1,0 +1,150 @@
+import { ref, shallowRef } from 'vue'
+
+export function useMediaStream2() {
+  const localStream = shallowRef(null)
+  const error = ref(null)
+  const videoDeviceId = ref('')
+  const audioDeviceId = ref('')
+
+  async function listDevices() {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    return {
+      videoInputs: devices.filter(d => d.kind === 'videoinput'),
+      audioInputs: devices.filter(d => d.kind === 'audioinput'),
+      audioOutputs: devices.filter(d => d.kind === 'audiooutput')
+    }
+  }
+
+  // 只针对单一 kind 取一条新track, 不动已有stream,也不动连接
+  async function acquireTrack(kind, deviceId) {
+    const constraints = kind === 'video'
+      ? {
+        video: {
+          deviceId: deviceId ? { exact: deviceId } : undefined
+        }
+      }
+      :
+      {
+        audio: {
+          deviceId: deviceId ? { exact: deviceId } : undefined
+        }
+      }
+
+    const tmp = await navigator.mediaDevices.getUserMedia(constraints)
+    return kind === 'video' ? tmp.getVideoTracks()[0] : tmp.getAudioTracks()[0]
+  }
+
+  async function start(video = true, audio = true) {
+    try {
+      const constraints = {
+        video: video
+          ? {
+            deviceId: videoDeviceId.value
+              ? { exact: videoDeviceId.value }
+              : undefined
+          }
+          : false,
+        audio: audio
+          ? {
+            deviceId: audioDeviceId.value
+              ? { exact: audioDeviceId.value }
+              : undefined
+          }
+          : false
+      }
+      // 同一电脑无法同时获取
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+
+      // 手机浏览器进行屏幕共享限制较大
+      //const stream = await navigator.mediaDevices.getDisplayMedia(constraints)
+      localStream.value = stream
+      error.value = null
+      return stream
+    } catch (e) {
+      error.value = e
+      throw e
+    }
+  }
+
+  // 切换设备：只替换track, 返回{removedTrack, addedTrack}
+  // 交给上层 replaceTrack
+  // 若还没开播，退回全量start
+  async function switchVideoDevice(deviceId) {
+    videoDeviceId.value = deviceId
+    const stream = localStream.value
+    if (!stream || stream.getVideoTracks().length === 0) {
+      await start(true, !!audioDeviceId.value)
+      return null
+    }
+
+    const addedTrack = await acquireTrack('video', deviceId)
+    const removedTrack = stream.getVideoTracks()[0]
+    // 组装新 stream(新视频+原音频), 赋给localStream触发预览更新
+    localStream.value = new MediaStream([addedTrack, ...stream.getAudioTracks()])
+    if (removedTrack) removedTrack.stop()
+    return { removedTrack, addedTrack }
+
+    // const wasEnabled = isVideoEnabled()
+    // await restartStream(wasEnabled, true)
+  }
+
+  async function switchAudioDevice(deviceId) {
+    audioDeviceId.value = deviceId
+    const stream = localStream.value
+    if (!stream || stream.getAudioTracks().length === 0) {
+      await start(!!videoDeviceId.value, true)
+      return null
+    }
+
+    const addedTrack = await acquireTrack('audio', deviceId)
+    const removedTrack = stream.getAudioTracks()[0]
+    localStream.value = new MediaStream([addedTrack, ...stream.getVideoTracks()])
+    if (removedTrack) removedTrack.stop()
+
+    return { removedTrack, localStream }
+
+    // const wasEnabled = isAudioEnabled()
+    // await restartStream(true, wasEnabled)
+  }
+
+  async function restartStream(video = true, audio = true) {
+    stop()
+    return start(video, audio)
+  }
+
+  function stop() {
+    localStream.value?.getTracks().forEach(t => t.stop())
+    localStream.value = null
+  }
+
+  function isVideoEnabled() {
+    return localStream.value?.getVideoTracks().some(t => t.enabled) ?? false
+  }
+
+  function isAudioEnabled() {
+    return localStream.value?.getAudioTracks().some(t => t.enabled) ?? false
+  }
+
+  function toggleVideo(enabled) {
+    localStream.value?.getVideoTracks().forEach(t => t.enabled = enabled)
+  }
+
+  function toggleAudio(enabled) {
+    localStream.value?.getAudioTracks().forEach(t => t.enabled = enabled)
+  }
+
+  return {
+    localStream,
+    error,
+    start,
+    stop,
+    restartStream,
+    toggleVideo,
+    toggleAudio,
+    switchVideoDevice,
+    switchAudioDevice,
+    listDevices,
+    isVideoEnabled,
+    isAudioEnabled
+  }
+}

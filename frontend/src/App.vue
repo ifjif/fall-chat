@@ -7,8 +7,6 @@
 </template>
 
 <script setup>
-import { useWsStore } from './stores/ws_store'
-useWsStore()
 
 </script>
 

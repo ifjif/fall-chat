@@ -194,3 +194,28 @@ func (d *BaseDao) WithinUpdateConvJobTX(ctx context.Context, fn func(repo repos.
 		return fn(repos.NewUpdateConvJobRepositories(tx))
 	})
 }
+
+// ======================================im_message仓库
+func (d *BaseDao) IMMessageRepos() repos.IMMessageRepositories {
+	return repos.NewIMMessageRepos(d.db)
+}
+
+// ======================================emoji仓库
+func (d *BaseDao) EmojiRepos() repos.EmojiRepositories {
+	return repos.NewEmojiRepos(d.db)
+}
+
+func (d *BaseDao) WithinEmojiTX(ctx context.Context, fn func(repo repos.EmojiRepositories) error) error {
+	return d.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return fn(repos.NewEmojiRepos(tx))
+	})
+}
+
+func (d *BaseDao) EmojiCache() cache.EmojiCache {
+	return cache.NewEmojiCache(d.rdb)
+}
+
+// ======================================rtc仓库
+func (d *BaseDao) RTCCache() cache.RTCCache {
+	return cache.NewRTCCache(d.rdb)
+}

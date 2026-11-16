@@ -1,0 +1,10 @@
+-X POST
+
+url = http://localhost:8080/api/v1/emoji/listPack
+
+-H "Content-type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzkzNjAzMzMxLCJuYmYiOjE3OTM2MDE1MzEsImlhdCI6MTc5MzYwMTUzMX0.QByOeNoaaGXE0MFbcIgXSWByKJDxjZVoJZ6BwBEhY2I"
+
+-d @listPack-req.json
+-o listPack-res.json

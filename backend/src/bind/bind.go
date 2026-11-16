@@ -37,3 +37,13 @@ func Query[T any](c fiber.Ctx) (*T, error) {
 
 	return &req, nil
 }
+
+func URI[T any](c fiber.Ctx) (*T, error) {
+	var req T
+
+	if err := c.Bind().URI(&req); err != nil {
+		return nil, ErrBind.Meger(err)
+	}
+
+	return &req, nil
+}

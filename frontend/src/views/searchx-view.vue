@@ -67,7 +67,7 @@ import { FlSearch } from 'fall-ui/icons'
 import { ref, h } from 'vue'
 import ApplyInfoList from '@/components/apply-info-list.vue'
 import GroupApplyInfoList from '@/components/group-apply-info-list.vue'
-import Avatar from '@/components/avatar.vue'
+import Avatar from '@/components/common/avatar.vue'
 
 const menuWidth = ref(0)
 const handleResize = ({ clientWidth }) => {

@@ -7,13 +7,16 @@ import (
 	"time"
 	"zzc/fall-chat/src/command"
 	"zzc/fall-chat/src/converter"
+	"zzc/fall-chat/src/cursor"
 	"zzc/fall-chat/src/data"
 	"zzc/fall-chat/src/data/repos"
 	"zzc/fall-chat/src/data/store"
 	"zzc/fall-chat/src/dto/response"
 	"zzc/fall-chat/src/errs"
+	"zzc/fall-chat/src/filter"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/query"
+	"zzc/fall-chat/src/queryparam"
 	"zzc/fall-chat/src/utils"
 
 	"gorm.io/gorm"
@@ -37,26 +40,23 @@ func (frs *FriendshipRequest) Inject() {
 }
 
 func (frs *FriendshipRequest) Apply(ctx context.Context, cmd *command.AddFriend) error {
-	targetId, err := frs.sf.Decode(cmd.TargetID)
-	if err != nil {
-		return frs.Wrap("解码目标id", err, "username", cmd.Username)
-	}
-
+	targetId := cmd.TargetID
+	userID := cmd.UserID
 	// 对方和我
 	friendships, err := frs.store.
 		FriendshipRequestRepos().
 		Friendship.
-		FindRelationship(ctx, cmd.ID, targetId)
+		FindRelationship(ctx, userID, targetId)
 	if err != nil {
 		return frs.Wrap("找好友关系", err, "username", cmd.Username)
 	}
 
 	for _, fs := range friendships {
-		if fs.UserID == targetId && fs.FriendID == cmd.ID && fs.Status == 0 {
+		if fs.UserID == targetId && fs.FriendID == userID && fs.Status == 0 {
 			return frs.Wrap("", errs.SocialErrBlacklisted, "username", cmd.Username)
 		}
 
-		if fs.UserID == cmd.ID && fs.FriendID == targetId && fs.Status == 0 {
+		if fs.UserID == userID && fs.FriendID == targetId && fs.Status == 0 {
 			return frs.Wrap("", errs.SocialErrBlacklist, "username", cmd.Username)
 		}
 	}
@@ -64,7 +64,7 @@ func (frs *FriendshipRequest) Apply(ctx context.Context, cmd *command.AddFriend)
 	existsCount, err := frs.store.
 		FriendshipRequestRepos().
 		FriendshipRequest.
-		PendingAndAgreeCount(ctx, cmd.ID, targetId)
+		PendingAndAgreeCount(ctx, userID, targetId)
 	if err != nil {
 		return frs.Wrap("找好友申请数量", err, "username", cmd.Username)
 	}
@@ -74,8 +74,8 @@ func (frs *FriendshipRequest) Apply(ctx context.Context, cmd *command.AddFriend)
 	}
 
 	// 添加申请信息
-	fr := model.GenerateFriendRequest(cmd.ID, targetId, cmd.ApplyType, cmd.Greeting)
-	err = utils.InjectID4Model(frs.sf, &fr.Model)
+	fr := model.GenerateFriendRequest(userID, targetId, cmd.ApplyType, cmd.Greeting)
+	err = model.InjectID(&fr.Model)
 	if err != nil {
 		return frs.Wrap("创建主键id", err, "username", cmd.Username)
 	}
@@ -91,35 +91,68 @@ func (frs *FriendshipRequest) Apply(ctx context.Context, cmd *command.AddFriend)
 	return nil
 }
 
-func (frs *FriendshipRequest) List(ctx context.Context, qu *query.ListFriendRequest) ([]*response.ListFriendRequestResult, error) {
-	result := []*response.ListFriendRequestResult{}
-	mo, err := frs.store.
-		FriendshipRequestRepos().
-		FriendshipRequest.
-		List(ctx, qu.ID, qu.FilterStatus, 10)
+func (frs *FriendshipRequest) List(ctx context.Context, qu *query.ListFriendRequest) (*response.PageCursor, error) {
+	param := queryparam.FriendshipRequestList{
+		Filter: filter.ListFilterOptions{
+			FilterDef: filter.FriendshipRequestFilterDefinition,
+			Filter:    filter.ToMap(qu.Filter),
+		},
+	}
+	pager := &cursor.CursorPager[*cursor.FriendshipRequestCursor, *model.FriendshipRequestRow, *response.FriendRequestResult]{
+		Limit: 20,
+		DecodeNext: func(s string) (*cursor.FriendshipRequestCursor, error) {
+			return cursor.Decode[cursor.FriendshipRequestCursor](s)
+		},
+		GetSortDef: func(key string) (cursor.SortDefinition, error) {
+			sortDef, ok := cursor.FriendshipRequestSortDefinitions[key]
+			if !ok {
+				return cursor.EmptySortDef, errs.CommonErrSortKeyNotExist
+			}
+			return sortDef, nil
+		},
+		Query: func(ctx context.Context, sortValue map[string]any, sortDef cursor.SortDefinition, limit int) ([]*model.FriendshipRequestRow, error) {
+			param.Sort = cursor.ListSortOptions{
+				SortDef: sortDef,
+				Sort:    sortValue,
+			}
+			return frs.store.
+				FriendshipRequestRepos().
+				FriendshipRequest.
+				List(ctx, qu.UserID, param, limit)
+		},
+		BuildCursor: func(next *cursor.FriendshipRequestCursor, rows []*model.FriendshipRequestRow, lastIdx int, hasNext bool) *cursor.FriendshipRequestCursor {
+			last := rows[lastIdx]
+			c := &cursor.FriendshipRequestCursor{
+				ID: last.ID,
+			}
+			c.SetHasNext(hasNext)
+			return c
+		},
+		ToResult: func(fr *model.FriendshipRequestRow) *response.FriendRequestResult {
+			return converter.ToFriendRequestResult(fr, int64(qu.UserID))
+		},
+	}
+
+	result, encoded, hasNext, err := pager.List(ctx, qu.Next, qu.SortKey)
 	if err != nil {
-		return nil, frs.Wrap("找好友请求信息", err, "id", qu.ID, "username", qu.Username)
+		return nil, frs.Wrap("list friendship request", err, "user_id", qu.UserID, "sort_key", qu.SortKey)
 	}
 
-	for _, row := range mo {
-		res := converter.ToListFriendRequestResult(&row)
-		res.Sender = row.FromUserID == qu.ID
-		result = append(result, res)
-	}
-
-	return result, nil
+	return &response.PageCursor{
+		Data:    utils.ToAnySlice(result),
+		Next:    encoded,
+		HasNext: hasNext,
+	}, nil
 }
 
 func (frs *FriendshipRequest) Handle(ctx context.Context, cmd *command.HandleFriendRequest) error {
-	targetID, err := frs.sf.Decode(cmd.HandleID)
-	if err != nil {
-		return frs.Wrap("id解码", err, "handle_id", cmd.HandleID, "username", cmd.Username)
-	}
+	targetID := cmd.HandleID
+	userID := cmd.UserID
 
 	req, err := frs.store.
 		FriendshipRequestRepos().
 		FriendshipRequest.
-		FindWithToUerID(ctx, targetID, cmd.ID)
+		FindWithToUerID(ctx, targetID, userID)
 	if err != nil {
 		contextInfo := []any{"username", cmd.Username}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -162,14 +195,14 @@ func (frs *FriendshipRequest) Handle(ctx context.Context, cmd *command.HandleFri
 		reason = "生成双向好友关系失败"
 
 		// 同意
-		aFriend := model.GenerateFriendship(cmd.ID, req.FromUserID, req.GetApplyTypeText())
-		err = utils.InjectID4Model(frs.sf, &aFriend.Model)
+		aFriend := model.GenerateFriendship(userID, req.FromUserID, req.GetApplyTypeText())
+		err = model.InjectID(&aFriend.Model)
 		if err != nil {
 			return err
 		}
 
-		bFriend := model.GenerateFriendship(req.FromUserID, cmd.ID, req.GetApplyTypeText())
-		err = utils.InjectID4Model(frs.sf, &bFriend.Model)
+		bFriend := model.GenerateFriendship(req.FromUserID, userID, req.GetApplyTypeText())
+		err = model.InjectID(&bFriend.Model)
 		if err != nil {
 			return err
 		}

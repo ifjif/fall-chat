@@ -12,24 +12,24 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type FriendshipRequestController struct {
-	BaseController
+type FriendshipRequest struct {
+	Base
 	friendshipRequestService *service.FriendshipRequest
 }
 
-func NewFriendshipRequestController(name string) *FriendshipRequestController {
-	bc := BaseController{name: name}
-	return &FriendshipRequestController{
-		BaseController: bc,
+func NewFriendshipRequest(name string) *FriendshipRequest {
+	bc := Base{name: name}
+	return &FriendshipRequest{
+		Base: bc,
 	}
 }
 
-func (frc *FriendshipRequestController) Inject() {
+func (frc *FriendshipRequest) Inject() {
 	s := service.GlobalService[service.FRIENDSHIPREQUEST_SERVICE_NAME].(*service.FriendshipRequest)
 	frc.friendshipRequestService = s
 }
 
-func (frc *FriendshipRequestController) SetRoute(r fiber.Router) {
+func (frc *FriendshipRequest) SetRoute(r fiber.Router) {
 	group := r.Group("/friendRequest")
 	authGroup := group.Group("")
 	authGroup.Use(middleware.AuthMiddleware)
@@ -39,7 +39,7 @@ func (frc *FriendshipRequestController) SetRoute(r fiber.Router) {
 	authGroup.Post("/handle", frc.handle)
 }
 
-func (frc *FriendshipRequestController) apply(c fiber.Ctx) error {
+func (frc *FriendshipRequest) apply(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -48,8 +48,11 @@ func (frc *FriendshipRequestController) apply(c fiber.Ctx) error {
 		return frc.Wrap("body bind", err, "username", username)
 	}
 
-	cmd := converter.ToAddFriendCommand(req)
-	cmd.ID = id
+	cmd, err := converter.ToAddFriendCommand(req)
+	if err != nil {
+		return err
+	}
+	cmd.UserID = id
 	cmd.Username = username
 
 	err = frc.friendshipRequestService.Apply(c.Context(), cmd)
@@ -64,7 +67,7 @@ func (frc *FriendshipRequestController) apply(c fiber.Ctx) error {
 		JSON(nil)
 }
 
-func (frc *FriendshipRequestController) list(c fiber.Ctx) error {
+func (frc *FriendshipRequest) list(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -74,7 +77,7 @@ func (frc *FriendshipRequestController) list(c fiber.Ctx) error {
 	}
 
 	qu := converter.ToListFriendRequestQuery(req)
-	qu.ID = id
+	qu.UserID = uint64(id)
 	qu.Username = username
 
 	result, err := frc.friendshipRequestService.List(c.Context(), qu)
@@ -88,7 +91,7 @@ func (frc *FriendshipRequestController) list(c fiber.Ctx) error {
 		JSON(result)
 }
 
-func (frc *FriendshipRequestController) handle(c fiber.Ctx) error {
+func (frc *FriendshipRequest) handle(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -97,8 +100,11 @@ func (frc *FriendshipRequestController) handle(c fiber.Ctx) error {
 		return frc.Wrap("body bind", err, "username", username)
 	}
 
-	cmd := converter.ToHandleFriendRequestCommand(req)
-	cmd.ID = id
+	cmd, err := converter.ToHandleFriendRequestCommand(req)
+	if err != nil {
+		return nil
+	}
+	cmd.UserID = id
 	cmd.Username = username
 
 	err = frc.friendshipRequestService.Handle(c.Context(), cmd)

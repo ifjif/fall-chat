@@ -2,7 +2,7 @@ package response
 
 import "time"
 
-type ListFriendRequestResult struct {
+type FriendRequestResult struct {
 	ID         string    `json:"id"`
 	FromUserID string    `json:"from_user_id"`
 	ToUserID   string    `json:"to_user_id"`

@@ -1,0 +1,21 @@
+{
+  "code": 200,
+  "message": "",
+  "data": {
+    "data": [
+      {
+        "id": "7a420e44164bdbca",
+        "name": "张三emoji1",
+        "cover_url": "files/bb80b3b088aa283edbd7fd4729c9d362/default.jpg",
+        "owner_id": "7aeabdf9ad0bdbca",
+        "soruce": "customer",
+        "price_type": "free",
+        "price": 0,
+        "status": "draft",
+        "created_at": "2026-11-02T12:26:13.239Z"
+      }
+    ],
+    "next": "eyJ2IjoxLCJwIjp7Imhhc19uZXh0IjpmYWxzZSwiaWQiOjExMDgzNjg4NzUzNDQ0MDQ0OH19",
+    "has_next": false
+  }
+}

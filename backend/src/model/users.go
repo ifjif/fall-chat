@@ -30,10 +30,3 @@ type User struct {
 	Status     *int8  `gorm:"default:1"` // 0：禁用，1：正常
 	SearchFlag *int8  `gorm:"default:1"` // 1:所有人可见 0:仅通过id
 }
-
-func NewUser(id int64) *User {
-	user := &User{}
-	user.ID = uint64(id)
-
-	return user
-}

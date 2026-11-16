@@ -7,16 +7,16 @@ import (
 	"syscall"
 	"zzc/fall-chat/src/controller"
 	"zzc/fall-chat/src/database"
-	"zzc/fall-chat/src/grpcs"
 	"zzc/fall-chat/src/middleware"
 	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/rpc"
 	"zzc/fall-chat/src/server"
 	"zzc/fall-chat/src/service"
 	"zzc/fall-chat/src/utils"
 
 	_ "zzc/fall-chat/src/filestore"
 
-	_ "zzc/fall-chat/src/message_queue"
+	_ "zzc/fall-chat/src/mq"
 	_ "zzc/fall-chat/src/pool"
 	_ "zzc/fall-chat/src/task_manager"
 
@@ -26,7 +26,7 @@ import (
 
 func main() {
 	model.Init(database.DB)
-	utils.Init(database.DB)
+	utils.Init()
 	controller.Init(server.APP,
 		controller.WithBeforeInjectHook(func() {
 			service.Init()
@@ -37,7 +37,7 @@ func main() {
 			app.Use(middleware.LoggerMiddleware)
 			return app
 		}))
-	grpcs.Init(server.GRPC)
+	rpc.Init(server.GRPC)
 
 	go func() {
 		server.GRPC.Serve()
@@ -55,7 +55,7 @@ func listenQuit(db *gorm.DB) {
 	go func() {
 		<-quit
 		utils.LogInfo("shutting down server...")
-		utils.ShutdownSnowFlake(db)
+		model.ShutdownSnowFlake(db)
 		os.Exit(1)
 	}()
 }

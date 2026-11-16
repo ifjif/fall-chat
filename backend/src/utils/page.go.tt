@@ -1,0 +1,50 @@
+package utils
+
+import "math"
+
+// 1) limit > count -> end
+// 2) limit = count -> getCursor
+func NextStrPageCursor(limit, count int, getCursor func() string) string {
+	if limit > count {
+		return "end"
+	}
+
+	return getCursor()
+}
+
+func NextNumPageCursor(limit, count int, getCursor func() int64) int64 {
+	if limit > count {
+		return -1
+	}
+
+	return getCursor()
+}
+
+// 1) 0: start
+// 2) -1: end
+func IsEmptyStrPageCursor(cursor string) bool {
+	return cursor == "end"
+}
+
+func IsEmptyZeroPageCursor(cursor int64) bool {
+	return cursor < 0
+}
+
+func GetNumPageCursor(cursor int64) int64 {
+	if cursor == 0 {
+		return math.MaxInt64
+	}
+
+	return cursor
+}
+
+func GetPageCursor(cursor string) (int64, error) {
+	if cursor == "" {
+		return math.MaxInt64, nil
+	}
+	if cursor == "end" {
+		return -1, nil
+	}
+
+	return SF.Decode(cursor)
+}

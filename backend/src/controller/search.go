@@ -12,24 +12,24 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type SearchController struct {
-	BaseController
+type Search struct {
+	Base
 	searchService *service.Search
 }
 
-func NewSearchController(name string) *SearchController {
-	bs := BaseController{name: name}
-	return &SearchController{
-		BaseController: bs,
+func NewSearch(name string) *Search {
+	bs := Base{name: name}
+	return &Search{
+		Base: bs,
 	}
 }
 
-func (sc *SearchController) Inject() {
+func (sc *Search) Inject() {
 	s := service.GlobalService[service.SEARCH_SERVICE_NAME].(*service.Search)
 	sc.searchService = s
 }
 
-func (sc *SearchController) SetRoute(r fiber.Router) {
+func (sc *Search) SetRoute(r fiber.Router) {
 	group := r.Group("/search")
 	authGroup := group.Group("")
 	authGroup.Use(middleware.AuthMiddleware)
@@ -38,7 +38,7 @@ func (sc *SearchController) SetRoute(r fiber.Router) {
 }
 
 // /search/userOrGroup 需auth
-func (sc *SearchController) userOrGroup(c fiber.Ctx) error {
+func (sc *Search) userOrGroup(c fiber.Ctx) error {
 	userID := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 	req, err := bind.Body[request.UserOrGroup](c)

@@ -1,17 +1,17 @@
 package command
 
 type AddGroupRequest struct {
-	ID        int64
+	UserID    int64
 	Username  string
-	GroupID   string
+	GroupID   int64
 	Greeting  string
-	InvitedID string
+	InvitedID *int64
 	ApplyType int
 }
 
 type HandleGroupRequest struct {
 	HandleByUserID int64
 	Username       string
-	HandleID       string
+	HandleID       int64
 	Action         int
 }

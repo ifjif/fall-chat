@@ -8,6 +8,7 @@ import { padZero } from "./pad_zero"
 
 // 6) 其它  -> 显示(x年x月x日 上午/中午/下午/晚上 xx:xx)
 export function parseTime(t) {
+  if (!t) t = Date.now()
   const now = new Date()
   const date = new Date(t)
   const diff = now - date // 毫秒差

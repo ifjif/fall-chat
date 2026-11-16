@@ -27,7 +27,7 @@ func NewFriendshipDao(db executor.Executor) FriendshipDao {
 }
 
 func (dao *friendshipDao) Create(ctx context.Context, list []model.Friendship) error {
-	return dao.db.Create(list).Error
+	return dao.db.Create(&list).Error
 }
 
 func (dao *friendshipDao) FindRelationship(ctx context.Context, id int64, targetID int64) ([]model.Friendship, error) {

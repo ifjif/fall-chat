@@ -12,6 +12,10 @@ export const useWsStore = defineStore('ws', () => {
     if (msg.type === 'ping') {
       return
     }
+
+    if (msg.type === 'invite') {
+      console.log(msg)
+    }
   })
 
   ws.on('chat_ack', msg => {
@@ -50,7 +54,8 @@ export const useWsStore = defineStore('ws', () => {
       content: replyData.content,
       last_msg_id: replyData.msg_id,
       last_msg_send_time: msg.timestamp || Date.now(),
-      last_msg_seq: replyData.msg_seq
+      last_msg_seq: replyData.msg_seq,
+      msg_type: replyData.msg_type
     }
     useConversationStore().handleReplyMsg(data)
   }

@@ -15,24 +15,24 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type UserController struct {
-	BaseController
+type User struct {
+	Base
 	userService *service.User
 }
 
-func NewUserController(name string) *UserController {
-	bs := BaseController{name: name}
-	return &UserController{
-		BaseController: bs,
+func NewUser(name string) *User {
+	bs := Base{name: name}
+	return &User{
+		Base: bs,
 	}
 }
 
-func (uc *UserController) Inject() {
+func (uc *User) Inject() {
 	userService := service.GlobalService[service.USER_SERVICE_NAME].(*service.User)
 	uc.userService = userService
 }
 
-func (uc *UserController) SetRoute(r fiber.Router) {
+func (uc *User) SetRoute(r fiber.Router) {
 	group := r.Group("/user")
 	group.Post("/register", uc.register)
 	group.Post("/login", uc.login)
@@ -46,7 +46,7 @@ func (uc *UserController) SetRoute(r fiber.Router) {
 }
 
 // /user/register
-func (uc *UserController) register(c fiber.Ctx) error {
+func (uc *User) register(c fiber.Ctx) error {
 	req, err := bind.Body[request.RegisterUser](c)
 	if err != nil {
 		return uc.Wrap("Body绑定", err)
@@ -65,7 +65,7 @@ func (uc *UserController) register(c fiber.Ctx) error {
 }
 
 // /user/login
-func (uc *UserController) login(c fiber.Ctx) error {
+func (uc *User) login(c fiber.Ctx) error {
 	req, err := bind.Body[request.LoginUser](c)
 	if err != nil {
 		return uc.Wrap("Body绑定", err)
@@ -93,7 +93,7 @@ func (uc *UserController) login(c fiber.Ctx) error {
 }
 
 // /user/resetPassword	需auth
-func (uc *UserController) resetPassword(c fiber.Ctx) error {
+func (uc *User) resetPassword(c fiber.Ctx) error {
 	// 已前置处理, 不再判断
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
@@ -121,7 +121,7 @@ func (uc *UserController) resetPassword(c fiber.Ctx) error {
 }
 
 // /user/forgetPassword
-func (uc *UserController) forgetPassword(c fiber.Ctx) error {
+func (uc *User) forgetPassword(c fiber.Ctx) error {
 	req, err := bind.Body[request.ForgetPassword](c)
 	if err != nil {
 		return uc.Wrap("Body绑定", err)
@@ -141,7 +141,7 @@ func (uc *UserController) forgetPassword(c fiber.Ctx) error {
 }
 
 // /user/updateProfile 需auth
-func (uc *UserController) updateProfile(c fiber.Ctx) error {
+func (uc *User) updateProfile(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -166,7 +166,7 @@ func (uc *UserController) updateProfile(c fiber.Ctx) error {
 }
 
 // /user/profile 需auth
-func (uc *UserController) profile(c fiber.Ctx) error {
+func (uc *User) profile(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 
 	result, err := uc.userService.Profile(c.Context(), id)

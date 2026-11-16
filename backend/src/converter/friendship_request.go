@@ -4,37 +4,52 @@ import (
 	"zzc/fall-chat/src/command"
 	"zzc/fall-chat/src/dto/request"
 	"zzc/fall-chat/src/dto/response"
+	"zzc/fall-chat/src/filter"
 	"zzc/fall-chat/src/model"
 	"zzc/fall-chat/src/query"
-	"zzc/fall-chat/src/utils"
 )
 
-func ToAddFriendCommand(req *request.AddFriend) *command.AddFriend {
+func ToAddFriendCommand(req *request.AddFriend) (*command.AddFriend, error) {
+	targetID, err := model.DecodeID(req.TargetID)
+	if err != nil {
+		return nil, err
+	}
 	return &command.AddFriend{
-		TargetID:  req.TargetID,
+		TargetID:  targetID,
 		ApplyType: req.ApplyType,
 		Greeting:  req.Greeting,
-	}
+	}, nil
 }
 
 func ToListFriendRequestQuery(req *request.ListFriend) *query.ListFriendRequest {
-	return &query.ListFriendRequest{
-		FilterStatus: req.FilterStatus,
+	qu := &query.ListFriendRequest{
+		Next:    req.Next,
+		SortKey: req.SortKey,
 	}
+
+	qu.Filter = &filter.FriendshipRequestFilter{
+		Status: req.Status,
+	}
+
+	return qu
 }
 
-func ToHandleFriendRequestCommand(req *request.HandleFriend) *command.HandleFriendRequest {
+func ToHandleFriendRequestCommand(req *request.HandleFriend) (*command.HandleFriendRequest, error) {
+	handleID, err := model.DecodeID(req.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &command.HandleFriendRequest{
-		HandleID: req.ID,
+		HandleID: handleID,
 		Action:   req.Action,
-	}
+	}, nil
 }
 
-func ToListFriendRequestResult(m *model.SearchFriendRequestRow) *response.ListFriendRequestResult {
-	return &response.ListFriendRequestResult{
+func ToFriendRequestResult(m *model.FriendshipRequestRow, userID int64) *response.FriendRequestResult {
+	r := &response.FriendRequestResult{
 		ID:         m.PublicID,
-		FromUserID: utils.SF.Encode(m.FromUserID),
-		ToUserID:   utils.SF.Encode(m.ToUserID),
+		FromUserID: model.EncodeID(m.FromUserID),
+		ToUserID:   model.EncodeID(m.ToUserID),
 		Message:    m.Message,
 		Status:     m.GetStatusText(),
 		ApplyType:  m.GetApplyTypeText(),
@@ -42,4 +57,8 @@ func ToListFriendRequestResult(m *model.SearchFriendRequestRow) *response.ListFr
 		Nickname:   m.Nickname,
 		CreatedAt:  m.CreatedAt,
 	}
+
+	r.Sender = m.FromUserID == userID
+
+	return r
 }

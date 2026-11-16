@@ -1,13 +1,13 @@
 package query
 
 type FileInstanceCheck struct {
-	ID       int64
+	UserID   int64
 	Username string
 	FileID   string
 }
 
 type FileChunkStatus struct {
-	ID       int64
+	UserID   int64
 	Username string
 	FileID   string
 }

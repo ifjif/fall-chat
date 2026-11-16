@@ -10,24 +10,24 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type FriendshipController struct {
-	BaseController
+type Friendship struct {
+	Base
 	friendshipService *service.Friendship
 }
 
-func NewFriendshipController(name string) *FriendshipController {
-	bc := BaseController{name: name}
-	return &FriendshipController{
-		BaseController: bc,
+func NewFriendship(name string) *Friendship {
+	bc := Base{name: name}
+	return &Friendship{
+		Base: bc,
 	}
 }
 
-func (fc *FriendshipController) Inject() {
+func (fc *Friendship) Inject() {
 	s := service.GlobalService[service.FRIENDSHIP_SERVICE_NAME].(*service.Friendship)
 	fc.friendshipService = s
 }
 
-func (fc *FriendshipController) SetRoute(r fiber.Router) {
+func (fc *Friendship) SetRoute(r fiber.Router) {
 	group := r.Group("/friendship")
 	authGroup := group.Group("")
 	authGroup.Use(middleware.AuthMiddleware)
@@ -35,7 +35,7 @@ func (fc *FriendshipController) SetRoute(r fiber.Router) {
 	authGroup.Post("/list", fc.friendshipList)
 }
 
-func (fc *FriendshipController) friendshipList(c fiber.Ctx) error {
+func (fc *Friendship) friendshipList(c fiber.Ctx) error {
 	ctx := c.Context()
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)

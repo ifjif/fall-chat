@@ -48,6 +48,12 @@ func (dao *conversationDao) FindBriefBySingleKey(ctx context.Context, sk string)
 		Where("single_key = ?", sk).
 		Select("id, public_id,conv_type").
 		Take(&conv).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = nil
+		}
+		return nil, err
+	}
 
 	return &conv, err
 }

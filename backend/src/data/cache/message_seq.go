@@ -42,6 +42,10 @@ func (c *messageSeqCache) IncrConvSeq(ctx context.Context, convID int64) (seq in
 		return -1, false
 	}
 
+	if newSeq == -1 {
+		return -1, false
+	}
+
 	return newSeq, true
 }
 

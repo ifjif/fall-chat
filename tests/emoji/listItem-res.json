@@ -1,0 +1,9 @@
+{
+  "code": 200,
+  "message": "",
+  "data": {
+    "data": [],
+    "next": "eyJ2IjoxLCJwIjp7Imhhc19uZXh0IjpmYWxzZSwic29ydF9ubyI6MCwiaWQiOjEwODg3NDk4MTMxOTkwNTI4MH19",
+    "has_next": false
+  }
+}

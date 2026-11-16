@@ -1,0 +1,35 @@
+{
+  "id": "7a46b43dcf8bdbca",
+  "items": [
+    {
+      "media_type": 4,
+      "font_name": "1F600",
+      "media_url": "",
+      "thumb_url": "",
+      "width": 0,
+      "height": 0,
+      "file_size": 0,
+      "sort_no": 0
+    },
+    {
+      "media_type": 4,
+      "font_name": "1F601",
+      "media_url": "",
+      "thumb_url": "",
+      "width": 0,
+      "height": 0,
+      "file_size": 0,
+      "sort_no": 1
+    },
+    {
+      "media_type": 4,
+      "font_name": "1F602",
+      "media_url": "",
+      "thumb_url": "",
+      "width": 0,
+      "height": 0,
+      "file_size": 0,
+      "sort_no": 2
+    }
+  ]
+}

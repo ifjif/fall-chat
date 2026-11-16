@@ -10,28 +10,28 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type EmailController struct {
-	BaseController
+type Email struct {
+	Base
 	emailService *service.Email
 }
 
-func NewEmailController(name string) *EmailController {
-	bs := BaseController{name: name}
-	return &EmailController{BaseController: bs}
+func NewEmail(name string) *Email {
+	bs := Base{name: name}
+	return &Email{Base: bs}
 }
 
-func (ec *EmailController) Inject() {
+func (ec *Email) Inject() {
 	es := service.GlobalService[service.EMAIL_SERVICE_NAME].(*service.Email)
 	ec.emailService = es
 }
 
-func (ec *EmailController) SetRoute(r fiber.Router) {
+func (ec *Email) SetRoute(r fiber.Router) {
 	group := r.Group("/email")
 	group.Post("/passRestCode", ec.passResetCode)
 }
 
 // /email/passResetCode
-func (ec *EmailController) passResetCode(c fiber.Ctx) error {
+func (ec *Email) passResetCode(c fiber.Ctx) error {
 	req, err := bind.Body[request.PassResetCode](c)
 	if err != nil {
 		return ec.Wrap("Body绑定", err)

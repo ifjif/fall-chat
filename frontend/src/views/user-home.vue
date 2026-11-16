@@ -40,7 +40,7 @@
 </template>
 <script setup>
 import { updateProfileApi, userProfileApi } from '@/api/user';
-import ImageUpload from '@/components/image-upload.vue';
+import ImageUpload from '@/components/common/image-upload.vue';
 import { h, ref, onMounted } from 'vue'
 import { FlMessageBox, FlInput } from 'fall-ui';
 import { uploadFile } from '@/utils/file_upload';

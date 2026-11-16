@@ -12,6 +12,9 @@ services:
       - ./data/caddy:/data
       - ./conf/caddy_config:/config
       - ./certs:/certs:ro
+    depends_on:
+      fall_chat_backend:
+        condition: service_started
 
   minio:
     image: docker.m.daocloud.io/minio/minio:RELEASE.2025-04-08T15-41-24Z
@@ -60,9 +63,9 @@ services:
       - --collation-server=utf8mb4_unicode_ci
 
   # redis服务
-  redis7:
-    image: docker.m.daocloud.io/library/redis:7
-    container_name: redis7
+  redis8:
+    image: docker.m.daocloud.io/library/redis:8
+    container_name: redis8
     restart: unless-stopped
     ports: 
       - "6378:6379"
@@ -118,10 +121,23 @@ services:
       STMP_PORT: ${STMP_PORT}
       STMP_USER: ${STMP_USER}
       STMP_PASS: ${STMP_PASSWORD}
+      MINIO_BUCKETNAME: ${MINIO_BUCKETNAME}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_ACCESSKEYID: ${MINIO_ACCESSKEYID}
+      MINIO_SECRETACCESSKEY: ${MINIO_SECRETACCESSKEY}
+      MINIO_USESSL: ${MINIO_USESSL}
+      KAFKA_BROKER: ${KAFKA_BROKER}
+      REDIS_ADDR: ${REDIS_ADDR}
+      REDIS_PASS: ${REDIS_PASS}
+      REDIS_DB: ${REDIS_DB}
+      REDIS_PROTOCOL: ${REDIS_PROTOCOL}
+      GRPC_PORT: ${GRPC_PORT}
+      HOST_IP4: ${HOST_IP4}
+
     depends_on:
       mysql8:
         condition: service_healthy
-      redis7:
+      redis8:
         condition: service_healthy
       kafka39:
         condition: service_started

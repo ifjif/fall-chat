@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"time"
+	"zzc/fall-chat/src/keys/ctxkey"
 	rediskey "zzc/fall-chat/src/keys/redis_key"
 	"zzc/fall-chat/src/model"
 
@@ -13,6 +14,10 @@ type ConvMembCache interface {
 	FindBriefInfo(ctx context.Context, convID int64, memberIDs []int64, memberPIDs []string) ([]model.IMConvMembBriefRow, []int64, error)
 
 	SetBriefInfo(ctx context.Context, convID int64, rows []model.IMConvMembBriefRow) error
+
+	GetLastReadMsgSeq(ctx context.Context, convID, userID int64) int64
+
+	SetLastReadMsgSeq(ctx context.Context, convID, userID, msgSeq int64)
 }
 
 type convMembCache struct {
@@ -122,4 +127,23 @@ func (c *convMembCache) SetBriefInfo(ctx context.Context, convID int64, rows []m
 
 	_, err := pipe.Exec(context.Background())
 	return err
+}
+
+func (c *convMembCache) GetLastReadMsgSeq(ctx context.Context, convID, userID int64) int64 {
+	logger := ctxkey.GetLogger(ctx)
+	key := rediskey.ConvMembLastReadMsgSeq{UserID: userID, ConvID: convID}
+	seq, err := c.rdb.Get(ctx, key.String()).Int64()
+	if err != nil && err != redis.Nil {
+		logger.Error("redis", "reason", "从缓存找用户会话最后读seq", "error", err, "user_id", userID, "conv_id", convID)
+	}
+	return seq
+}
+
+func (c *convMembCache) SetLastReadMsgSeq(ctx context.Context, convID, userID, msgSeq int64) {
+	logger := ctxkey.GetLogger(ctx)
+	key := rediskey.ConvMembLastReadMsgSeq{UserID: userID, ConvID: convID}
+	err := c.rdb.Set(ctx, key.String(), msgSeq, key.TTL()).Err()
+	if err != nil {
+		logger.Error("redis", "reason", "给用户某个会话设置last_msg_seq", "error", err, "user_id", userID, "conv_id", convID)
+	}
 }

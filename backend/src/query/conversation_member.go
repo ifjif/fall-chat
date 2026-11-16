@@ -1,14 +1,15 @@
 package query
 
 type ConvMembListBrief4Conv struct {
-	ID       int64
+	UserID   int64
 	Username string
-	ConvID   string
+	ConvID   int64
 }
 
 type ConvMembListBriefBatch struct {
-	ID        int64
-	Username  string
-	ConvID    string
-	MemberIDs []string
+	UserID     int64
+	Username   string
+	ConvID     int64
+	MemberIDs  []int64
+	MemberPIDs []string
 }

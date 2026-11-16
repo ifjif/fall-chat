@@ -37,6 +37,14 @@ const routes = [
       {
         path: '/relation',
         component: () => import('../views/relation-view.vue')
+      },
+      {
+        path: '/emoji',
+        component: () => import("../views/emoji-view.vue")
+      },
+      {
+        path: '/emoji-detail',
+        component: () => import("../views/emoji-detail-view.vue")
       }
     ]
   }

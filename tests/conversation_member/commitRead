@@ -1,0 +1,10 @@
+-X POST
+
+url = http://localhost:8080/api/v1/conversationMember/commit/read
+
+-H "Content-Type: application/json"
+-H "Accept: application/json"
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2FlYWJkZjlhZDBiZGJjYSIsInVzZXJuYW1lIjoiemhhbmdzYW4iLCJkZXZpY2VfaWQiOiIiLCJqdGkiOiIiLCJ0eXBlIjoiYWNjZXNzIiwiaXNzIjoiZmFsbC1jaGF0IiwiZXhwIjoxNzkzOTU3NTk0LCJuYmYiOjE3OTM5NTU3OTQsImlhdCI6MTc5Mzk1NTc5NH0.1IhHoiI940uFFT3ORYb8Imd4XZiXpFh48TdxPC2a6Ic"
+
+-d @commitRead-req.json
+-o commitRead-res.json

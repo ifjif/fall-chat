@@ -35,10 +35,10 @@
   </fl-container>
 </template>
 <script setup>
-import { FlSetting, FlComment, FlTeam, FlAddTeam, FlEarth } from 'fall-ui/icons'
+import { FlSetting, FlComment, FlTeam, FlAddTeam, FlEarth, FlSmile } from 'fall-ui/icons'
 import router from '@/router'
 import LayoutView from './layout-view.vue'
-import Avatar from '@/components/avatar.vue'
+import Avatar from '@/components/common/avatar.vue'
 import { useUserStore } from '@/stores/user_info'
 import { computed } from 'vue'
 const userStore = useUserStore()
@@ -70,6 +70,12 @@ const topActions = [
       console.log('earth')
     }
   },
+  {
+    com: FlSmile,
+    click: () => {
+      router.push('/emoji')
+    }
+  }
 ]
 const bottomActions = [
   {

@@ -73,7 +73,7 @@ import { friendshipListApi } from '@/api/friendship'
 import router from '@/router'
 import { onMounted, ref } from 'vue'
 import { useConversationStore } from '@/stores/conversation_store'
-import Avatar from '@/components/avatar.vue'
+import Avatar from '@/components/common/avatar.vue'
 
 const convStore = useConversationStore()
 
@@ -86,7 +86,6 @@ const height = ref(0)
 const handleResize = ({ clientWidth, clientHeight }) => {
   width.value = clientWidth
   height.value = clientHeight
-  console.log(clientWidth, clientHeight)
 }
 
 const fetchFriends = async () => {
@@ -114,6 +113,7 @@ const selectGroup = (index, item) => {
 }
 
 const handleConcat = () => {
+  console.log(selectFriend.value)
   const data = {
     id: selectFriend.value.id,
     peer_id: selectFriend.value.id,

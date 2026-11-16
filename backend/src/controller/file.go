@@ -19,24 +19,24 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type FileController struct {
-	BaseController
+type File struct {
+	Base
 	fileService *service.File
 }
 
-func NewFileController(name string) *FileController {
-	bs := BaseController{name: name}
-	return &FileController{
-		BaseController: bs,
+func NewFile(name string) *File {
+	bs := Base{name: name}
+	return &File{
+		Base: bs,
 	}
 }
 
-func (fc *FileController) Inject() {
+func (fc *File) Inject() {
 	fs := service.GlobalService[service.FILE_SERVICE_NAME].(*service.File)
 	fc.fileService = fs
 }
 
-func (fc *FileController) SetRoute(r fiber.Router) {
+func (fc *File) SetRoute(r fiber.Router) {
 	group := r.Group("/file")
 
 	authGroup := group.Group("")
@@ -54,7 +54,7 @@ func (fc *FileController) SetRoute(r fiber.Router) {
 }
 
 // /file/config 	需auth
-func (fc *FileController) config(c fiber.Ctx) error {
+func (fc *File) config(c fiber.Ctx) error {
 	result, err := fc.fileService.Config(c.Context())
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func (fc *FileController) config(c fiber.Ctx) error {
 }
 
 // /file/fetch 需auth
-func (fc *FileController) fetch(c fiber.Ctx) error {
+func (fc *File) fetch(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -103,7 +103,7 @@ func (fc *FileController) fetch(c fiber.Ctx) error {
 
 // /file/upload 需auth
 // 小于5MB 走它
-func (fc *FileController) upload(c fiber.Ctx) error {
+func (fc *File) upload(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 	req, err := bind.Body[request.FileUpload](c)
@@ -117,7 +117,7 @@ func (fc *FileController) upload(c fiber.Ctx) error {
 	}
 
 	cmd := converter.ToFileUploadCommand(req)
-	cmd.ID = id
+	cmd.UserID = id
 	cmd.Username = username
 
 	path, err := fc.fileService.Upload(cmd)
@@ -132,7 +132,7 @@ func (fc *FileController) upload(c fiber.Ctx) error {
 }
 
 // /file/chunk 需auth
-func (fc *FileController) chunk(c fiber.Ctx) error {
+func (fc *File) chunk(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 	req, err := bind.Form[request.FileUploadChunk](c)
@@ -141,7 +141,7 @@ func (fc *FileController) chunk(c fiber.Ctx) error {
 	}
 
 	cmd := converter.ToFileUploadChunkCommand(req)
-	cmd.ID = id
+	cmd.UserID = id
 	cmd.Username = username
 
 	err = fc.fileService.UploadChunk(cmd)
@@ -155,7 +155,7 @@ func (fc *FileController) chunk(c fiber.Ctx) error {
 		JSON(nil)
 }
 
-func (fc *FileController) chunkStatus(c fiber.Ctx) error {
+func (fc *File) chunkStatus(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	usernmae := ctxkey.GetUsername(c)
 
@@ -165,7 +165,7 @@ func (fc *FileController) chunkStatus(c fiber.Ctx) error {
 	}
 
 	qu := converter.ToFileChunkStatusQuery(req)
-	qu.ID = id
+	qu.UserID = id
 	qu.Username = usernmae
 
 	result, err := fc.fileService.ChunkStatus(qu)
@@ -180,7 +180,7 @@ func (fc *FileController) chunkStatus(c fiber.Ctx) error {
 }
 
 // /file/merge 需auth
-func (fc *FileController) merge(c fiber.Ctx) error {
+func (fc *File) merge(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -192,7 +192,7 @@ func (fc *FileController) merge(c fiber.Ctx) error {
 	}
 
 	cmd := converter.ToFileUploadMergeCommand(req)
-	cmd.ID = id
+	cmd.UserID = id
 	cmd.Username = username
 
 	filename, err := fc.fileService.UploadMerge(cmd)
@@ -208,7 +208,7 @@ func (fc *FileController) merge(c fiber.Ctx) error {
 }
 
 // /file/instanceCheck 需auth
-func (fc *FileController) instanceCheck(c fiber.Ctx) error {
+func (fc *File) instanceCheck(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 	req, err := bind.Body[request.FileInstanceCheck](c)
@@ -219,7 +219,7 @@ func (fc *FileController) instanceCheck(c fiber.Ctx) error {
 	}
 
 	qu := converter.ToFileInstanceCheckQuery(req)
-	qu.ID = id
+	qu.UserID = id
 	qu.Username = username
 
 	fileURL, err := fc.fileService.InstanceCheck(qu)
@@ -240,7 +240,7 @@ func (fc *FileController) instanceCheck(c fiber.Ctx) error {
 }
 
 // /file/accessUrl 需auth
-func (fc *FileController) accessURL(c fiber.Ctx) error {
+func (fc *File) accessURL(c fiber.Ctx) error {
 	id := ctxkey.GetUserPubID(c)
 	username := ctxkey.GetUsername(c)
 	filename := c.Query("file")

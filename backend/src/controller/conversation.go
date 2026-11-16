@@ -12,25 +12,25 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type ConversationController struct {
-	BaseController
+type Conversation struct {
+	Base
 	conversationService *service.Conversation
 }
 
-func NewConversationController(name string) *ConversationController {
-	bs := BaseController{name: name}
+func NewConversation(name string) *Conversation {
+	bs := Base{name: name}
 
-	return &ConversationController{
-		BaseController: bs,
+	return &Conversation{
+		Base: bs,
 	}
 }
 
-func (cc *ConversationController) Inject() {
+func (cc *Conversation) Inject() {
 	cs := service.GlobalService[service.CONVERSATION_SERVICE_NAME].(*service.Conversation)
 	cc.conversationService = cs
 }
 
-func (cc *ConversationController) SetRoute(r fiber.Router) {
+func (cc *Conversation) SetRoute(r fiber.Router) {
 	group := r.Group("/conversation")
 	auth := group.Group("")
 	auth.Use(middleware.AuthMiddleware)
@@ -39,7 +39,7 @@ func (cc *ConversationController) SetRoute(r fiber.Router) {
 	auth.Get("/single", cc.single)
 }
 
-func (cc *ConversationController) list(c fiber.Ctx) error {
+func (cc *Conversation) list(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -54,7 +54,7 @@ func (cc *ConversationController) list(c fiber.Ctx) error {
 		JSON(result)
 }
 
-func (cc *ConversationController) single(c fiber.Ctx) error {
+func (cc *Conversation) single(c fiber.Ctx) error {
 	id := ctxkey.GetUserID(c)
 	username := ctxkey.GetUsername(c)
 
@@ -63,8 +63,11 @@ func (cc *ConversationController) single(c fiber.Ctx) error {
 		return cc.Wrap("query bind faild.", err, "id", id)
 	}
 
-	qu := converter.ToConvSingleQuery(req)
-	qu.ID = id
+	qu, err := converter.ToConvSingleQuery(req)
+	if err != nil {
+		return err
+	}
+	qu.UserID = id
 	qu.Username = username
 
 	result, err := cc.conversationService.Single(c.Context(), qu)

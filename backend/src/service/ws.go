@@ -13,8 +13,9 @@ import (
 	"zzc/fall-chat/src/job"
 	"zzc/fall-chat/src/keys/ctxkey"
 	rediskey "zzc/fall-chat/src/keys/redis_key"
-	"zzc/fall-chat/src/message_queue/consumer"
-	"zzc/fall-chat/src/message_queue/producer"
+	"zzc/fall-chat/src/model"
+	"zzc/fall-chat/src/mq/consumer"
+	"zzc/fall-chat/src/mq/producer"
 	"zzc/fall-chat/src/pool"
 	taskmanager "zzc/fall-chat/src/task_manager"
 	"zzc/fall-chat/src/utils"
@@ -32,6 +33,7 @@ type Ws struct {
 	groupMemberService    *GroupMember
 	chatConsumer          *consumer.Chat
 	joinGroupConsumer     *consumer.JoinGroup
+	roomInviteConsumer    *consumer.RoomInvite
 	chatProducer          *producer.Chat
 	updateConvMembProduer *producer.UpdateConvMember
 }
@@ -66,6 +68,7 @@ func (ws *Ws) Inject() {
 
 	ws.chatConsumer = consumer.GetChat(deliverer)
 	ws.joinGroupConsumer = consumer.GetJoinGroup()
+	ws.roomInviteConsumer = consumer.GetRoomInvite(deliverer)
 }
 
 func (ws *Ws) Remove(ctx context.Context, id string) {
@@ -135,7 +138,7 @@ func (ws *Ws) SendGroupMessage(ctx context.Context, senderID string, groupID int
 
 	// 除发送者外的所有
 	for _, id := range ids {
-		encID := ws.sf.Encode(id)
+		encID := model.EncodeID(id)
 		if encID != senderID {
 			ws.SendMessageByMQ(ctx, msg, encID)
 		}

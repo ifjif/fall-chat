@@ -7,7 +7,9 @@ type AddFriend struct {
 }
 
 type ListFriend struct {
-	FilterStatus []int `json:"filter_status"`
+	Status  []int  `json:"status"`
+	Next    string `json:"next"`
+	SortKey string `json:"sort_key"`
 }
 
 type HandleFriend struct {

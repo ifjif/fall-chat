@@ -23,8 +23,12 @@ func ToIMConversationResponse(row *model.IMConversationRow) *response.IMConversa
 	}
 }
 
-func ToConvSingleQuery(req *request.ConvSingle) *query.ConvSingle {
-	return &query.ConvSingle{
-		ConvID: req.ConvID,
+func ToConvSingleQuery(req *request.ConvSingle) (*query.ConvSingle, error) {
+	convID, err := model.DecodeID(req.ConvID)
+	if err != nil {
+		return nil, err
 	}
+	return &query.ConvSingle{
+		ConvID: convID,
+	}, nil
 }

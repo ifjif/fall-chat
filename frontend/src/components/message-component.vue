@@ -7,26 +7,38 @@
       <Avatar :uri="data.sender_avatar"></Avatar>
 
       <div style="max-width:80%;">
-        <div :class="['sender-name', { 'is-sender-name': self }]">{{ data.sender_name }}</div>
-        <div
-          style="overflow-wrap:break-word;position: relative;padding:10px;border-radius:4px;background-color: beige;">
-          <fl-loading :loading="data.status === 'sending'"></fl-loading>
-          {{ data.content }}
+        <div :class="['sender-name', { 'is-sender-name': self }]">
+          {{ data.sender_name }}
         </div>
-      </div>
 
-      <div style="margin-top: 24px;">
-        <fl-icon v-if="data.status === 'success'" size="20" color="green">
-          <FlCheckCircle />
-        </fl-icon>
-        <fl-popover trigger="hover" :showArrow="false" :padding="4">
-          <template #reference>
-            <fl-icon @click="resend(data)" style="cursor:pointer;" v-if="data.status === 'error'" size="20" color="red">
-              <FlCloseCircle />
+        <div :class="[{ 'is-sender': self }]" style="display:flex;overflow-wrap:break-word;position: relative;">
+          <div style="max-width:100%;width:max-content;padding:10px;border-radius:4px;"
+            :style="{ backgroundColor: self ? 'beige' : '#ffc9c9' }">
+            <fl-loading :loading="data.status === 'sending'"></fl-loading>
+            <MessageContent :type="data.msg_type" :content="data.content"></MessageContent>
+          </div>
+
+          <div :style="[
+            self ?
+              { 'padding-right': '10px' }
+              :
+              { 'padding-left': '10px' }
+          ]">
+            <fl-icon v-if="data.status === 'success'" size="20" color="green">
+              <FlCheckCircle />
             </fl-icon>
-          </template>
-          重发
-        </fl-popover>
+            <fl-popover trigger="hover" :showArrow="false" :padding="4">
+              <template #reference>
+                <fl-icon @click="resend(data)" style="cursor:pointer;" v-if="data.status === 'error'" size="20"
+                  color="red">
+                  <FlCloseCircle />
+                </fl-icon>
+              </template>
+              重发
+            </fl-popover>
+          </div>
+
+        </div>
       </div>
 
     </div>
@@ -34,10 +46,11 @@
 </template>
 <script setup>
 import { FlCheckCircle, FlCloseCircle } from 'fall-ui/icons'
-import Avatar from './avatar.vue';
+import Avatar from './common/avatar.vue';
 import { useWsStore } from '@/stores/ws_store';
 import { useConversationStore } from '@/stores/conversation_store';
 import { parseTime } from '@/utils/timeinfo';
+import MessageContent from './message-content.vue';
 const wsStore = useWsStore()
 const convStore = useConversationStore()
 const props = defineProps({
@@ -85,7 +98,12 @@ const resend = (msg) => {
   flex-direction: row-reverse;
 }
 
+.message-body .is-sender {
+  flex-direction: row-reverse;
+}
+
 .sender-name {
+  height: 20px;
   font-size: 14px;
   padding: 4px 0;
   color: gray;

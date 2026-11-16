@@ -1,6 +1,8 @@
 package model
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 func Init(db *gorm.DB) {
 	db.AutoMigrate(&MachineIdPool{})
@@ -15,4 +17,12 @@ func Init(db *gorm.DB) {
 	db.AutoMigrate(&IMConversation{})
 	db.AutoMigrate(&IMConversationMember{})
 	db.AutoMigrate(&IMMessage{})
+	db.AutoMigrate(&EmojiItem{})
+	db.AutoMigrate(&EmojiPack{})
+	db.AutoMigrate(&EmojiOwn{})
+	/*
+		db.Delete(&EmojiPack{}, "id > 0")
+	*/
+
+	initSnowFlake(db)
 }

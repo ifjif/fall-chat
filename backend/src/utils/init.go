@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/fatih/color"
-	"gorm.io/gorm"
 )
 
 func init() {
@@ -37,7 +36,6 @@ func init() {
 	STMP_PASS = pass
 }
 
-func Init(db *gorm.DB) {
-	initSnowFlake(db)
+func Init() {
 	initLogger()
 }
